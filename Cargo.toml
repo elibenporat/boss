@@ -1,0 +1,22 @@
+[package]
+name = "boss"
+version = "0.1.0"
+authors = ["Eli Ben-Porat <eli.bp@jottabyte.io>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+isahc = "0.8"
+csv = "1.1"
+serde = {version = "1.0", features = ["derive"]}
+rayon = "1.2"
+serde_json = "1"
+
+# This is just for development, remove when it's a working library
+[profile.release]
+opt-level = 3
+
+[[bin]]
+name = "boss"
+path = "src/main.rs"
