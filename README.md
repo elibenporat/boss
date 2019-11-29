@@ -1,3 +1,4 @@
+BOSS | Baseball Open Source Software
 ===
 
 A pure Rust baseball data aggregation and analytics library. 
@@ -11,7 +12,7 @@ TODO
 
 ```toml
 [dependencies]
-boss = "0.2"
+boss = "0.1"
 ```
 ### Prior Art
 
