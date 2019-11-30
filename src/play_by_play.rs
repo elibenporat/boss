@@ -6,6 +6,7 @@
 //! 
 //! 
 //! 
+//! 
 
 
 // use isahc::prelude::*;
@@ -19,22 +20,102 @@ pub (crate) struct Game {
 
 #[derive(Deserialize, Debug)]
 pub (crate) struct AllPlays {
-    result: Result,
+    result: PlateAppearanceData,
+    about: About,
 }
 
+///Result captures plate appearance level details. We ignore the "rbi", "awayscore" and "homescore" fields, as we'll be manually tracking game state,
+///including RE24/288, Win Probability and other metadata. 
 #[derive(Deserialize, Debug)]
-pub (crate) struct Result {
+pub (crate) struct PlateAppearanceData {
     #[serde(rename="type")]
     result_type: ResultType,
     #[serde(rename="event")]
     plate_appearance_result: PlateAppearanceResult,
+    #[serde(rename="eventType")]
+    plate_appearance_result_type: EventType,
+     #[serde(rename="description")]
+    plate_appearance_result_description: String,
 }
 
+#[derive(Deserialize, Debug)]
+#[serde(rename_all="camelCase")]
+pub (crate) enum HalfInning {
+    Top,
+    Bottom,
+}
+
+#[derive(Deserialize, Debug)]
+pub (crate) struct About {
+    #[serde(rename="atBatIndex")]
+    plate_appearance_index: u8,
+    #[serde(rename="halfInning")]
+    half_inning: HalfInning,
+    #[serde(rename="inning")]
+    inning_num: u8
+}
 
 #[derive(Deserialize, Debug)]
 #[serde(field_identifier, rename_all="camelCase")]
 pub (crate) enum ResultType {
     AtBat,
+}
+
+
+///PlateAppearanceResultType is a slightly more grouped PlateAppearanceResult. We probably don't need both,
+/// but should be fairly cheap since we're storing both as enums.PlateAppearanceResult
+#[allow(non_camel_case_types)]
+#[derive(Debug, Deserialize)]
+#[serde(field_identifier)]
+pub (crate) enum EventType {
+  balk,
+  fan_interference,
+  other_advance,
+  pickoff_error_2b,
+  stolen_base_3b,
+  batter_interference,
+  field_error,
+  other_out,
+  pickoff_error_3b,
+  stolen_base_home,
+  catcher_interf,
+  field_out,
+  passed_ball,
+  runner_double_play,
+  strikeout,
+  caught_stealing_2b,
+  fielders_choice,
+  pickoff_1b,
+  runner_interference,
+  strikeout_double_play,
+  caught_stealing_3b,
+  fielders_choice_out,
+  pickoff_2b,
+  sac_bunt,
+  triple,
+  caught_stealing_home,
+  force_out,
+  pickoff_3b,
+  sac_bunt_double_play,
+  triple_play,
+  defensive_indiff,
+  grounded_into_double_play,
+  pickoff_caught_stealing_2b,
+  sac_fly,
+  walk,
+  double,
+  hit_by_pitch,
+  pickoff_caught_stealing_3b,
+  sac_fly_double_play,
+  wild_pitch,
+  double_play,
+  home_run,
+  pickoff_caught_stealing_home,
+  single,
+  error,
+  intent_walk,
+  pickoff_error_1b,
+  stolen_base_2b,
 }
 
 
