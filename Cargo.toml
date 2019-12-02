@@ -25,4 +25,4 @@ opt-level = 3
 
 [[bin]]
 name = "boss"
-path = "src/main.rs"
+path = "src/bin/test.rs"
