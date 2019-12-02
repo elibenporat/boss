@@ -33,8 +33,8 @@ pub (crate) struct AllPlays {
     about: About,
     matchup: MatchupData,
     runners: Vec<RunnerData>,
-    #[serde(rename="playEvents")]
     //contains pitches, subs, pickoffs, etc.
+    #[serde(rename="playEvents")]
     play_events: Vec<PlayEvent>,
 }
 
@@ -48,13 +48,15 @@ pub (crate) enum PlayEventType  {
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all="camelCase")]
-pub (crate) struct PitchData {
+pub (crate) struct PitchDataParse {
     strike_zone_top: f32,
     strike_zone_bottom: f32,
     coordinates: PitchCoordinates,
     start_speed: Option<f32>,
     end_speed: Option<f32>,
     breaks: Option<PitchBreaks>,
+    plate_time: Option<f32>,
+    extension: Option<f32>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -183,7 +185,6 @@ pub (crate) enum PitchTypeDescription {
     Unknown,
 }
 
-
 // The PlayEvent can be either an event or a pitch. This is because non-pitch related things can happen between pitches,
 // such as subs, stolen bases, balks, etc. Unfortunately, this creates a less-than ideal initial struct, as we'll need to wrap
 // a bunch of fields in Options.
@@ -194,11 +195,11 @@ pub (crate) struct PlayEvent {
     is_pitch: bool,
     #[serde(rename="type")]
     play_event_type: PlayEventType,
-    pitch_data: Option<PitchData>,
+    pitch_data: Option<PitchDataParse>,
     hit_data: Option<HitData>,
 }
 
-// We ignore the "count" as we'll be computing base state manually
+// We ignore the "count" as we'll be computing the state manually
 #[derive(Deserialize, Debug)]
 #[serde(rename_all="camelCase")]
 pub (crate) struct PlayEventDetails {
@@ -211,7 +212,8 @@ pub (crate) struct PlayEventDetails {
 }
 
 ///Result captures plate appearance level details. We ignore the "rbi", "awayscore" and "homescore" fields, as we'll be manually tracking game state,
-///including RE24/288, Win Probability and other metadata. 
+///including RE24/288, Win Probability and other metadata such as previous pitch. We are ignoring the plate appearance description for performance reasons. 
+/// All the relevant data are captured in other data fields.
 #[derive(Deserialize, Debug)]
 pub (crate) struct PlateAppearanceData {
     #[serde(rename="type")]
@@ -220,8 +222,8 @@ pub (crate) struct PlateAppearanceData {
     plate_appearance_result: Event,
     #[serde(rename="eventType")]
     plate_appearance_result_type: EventType,
-    #[serde(rename="description")]
-    plate_appearance_result_description: String,
+    // #[serde(rename="description")]
+    // plate_appearance_result_description: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -338,9 +340,12 @@ impl From<Base> for BaseValue {
     }
 }
 
+/// RunnerData captures all the runner movement for any pitch or action. We ignore the "movementReason" field since
+/// we can get better info from the Event/EventType fields. At this point, the base states are flattened and converted
+/// to base values.
 #[derive(Deserialize, Debug)]
 #[serde(from="Runner")]
-struct RunnerData {
+pub(crate) struct RunnerData {
     runner_id: u32,
     start_base_value: u8,
     end_base_value: u8,
@@ -353,7 +358,7 @@ struct RunnerData {
 
 #[derive(Deserialize, Debug)]
 #[serde(from="Matchup")]
-struct MatchupData {
+pub(crate) struct MatchupData {
     batter_id: u32,
     batter_bat_side_code: SideCode,
     batter_bat_side_desc: SideDescription,
@@ -396,14 +401,10 @@ impl From <Matchup> for MatchupData {
 }
 
 
-#[derive(Deserialize, Debug)]
-pub (crate) struct PlayEvents {
-
-}
 
 /// EventType is a slightly more grouped Event. We probably don't need both,
 /// but should be fairly cheap since we're storing both as enums. TODO: Clean
-/// this up and merge with Event.
+/// this up to use proper formatting or merge with Event.
 #[allow(non_camel_case_types)]
 #[derive(Debug, Deserialize)]
 #[serde(field_identifier)]
@@ -561,8 +562,19 @@ pub (crate) struct PlateAppearance {
 
 pub fn parse_test_data () {
 
+    // let mut test_vec: Vec<Game> = Vec::with_capacity(10_000);
+    
+    
+    // for _ in 0..10_000 {
+    //     test_vec.push(test_parse);
+    // }
+
     let test_parse: Game = serde_json::from_str(MLB_DATA).unwrap();
-    dbg!(test_parse);
+    // dbg!(&test_parse);      
+    
+    let x: [Game; 1] = [test_parse];
+    let size: &[Game] = &x;
+    dbg!(std::mem::size_of_val(size));
 
 }
 
