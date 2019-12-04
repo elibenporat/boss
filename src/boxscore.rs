@@ -1,10 +1,10 @@
-//! API Bindings for the MLB Boxscore API hosted at http://statsapi.mlb.com/api/v1/game/{game_pk}/boxscore.<br/>
-//! All data are subject to MLB Advanced Media copyright
-//! 
-//! These data are important for setting the intitial defense, as well as specific metadata for the game such as weather, umpires and attendance.
-//! 
-//! 
-//! 
+/// API Bindings for the MLB Boxscore API hosted at http://statsapi.mlb.com/api/v1/game/{game_pk}/boxscore.<br/>
+/// All data are subject to MLB Advanced Media copyright
+/// 
+/// These data are important for setting the intitial defense, as well as specific metadata for the game such as weather, umpires and attendance.
+/// 
+/// 
+/// 
 
 
 use serde::{Deserialize};
