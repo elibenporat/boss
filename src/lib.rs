@@ -18,29 +18,34 @@
 
 // const SPORT_IDS: [u8; 8] = [1, 11, 12, 13, 14, 15, 16, 17];
 // http://lookup-service-prod.mlb.com/json/named.player_id_xref.bam?player_id=545361
-// Data all the way back to 2005!!
+// Data all the way back to 2005
+// Also some college baseball with exit velos??? http://statsapi.mlb.com/api/v1/sports
+// 23 = Independent Leagues
+// 31 = Japan (no data there that I can see)
+// 51 = International ? not sure what this is
+// 512 = Women's Baseball
+// 22 = College Baseball / 586 = High School Baseball
+// Get coaches via: http://statsapi.mlb.com/api/v1/teams/110/coaches/?date=06/19/2015 (need team ID and date)
+// Look at this and add as prior art : https://github.com/toddrob99/MLB-StatsAPI/blob/master/statsapi/endpoints.py
 
-// pub mod play_by_play;
+
+pub mod play_by_play;
 pub mod schedule;
 pub mod utils;
+pub mod boxscore;
+pub mod player_changes;
+pub mod venues;
 
 pub (crate) const BASE_URL: &'static str = "http://statsapi.mlb.com/api/v1/";
 
-// pub mod boxscore;
+/// CHUNK_SIZE controls how many files we request from the network at a time. This is to reduce the probability of network timeouts from flooding too many requests at once.
+/// This value will be used in stream_chunked. Only use this if you get a network timeout error.
+pub const CHUNK_SIZE: usize = 30;
 
-// Schedule captures all the games that are available for download. Schedule also includes a lot of metadata that we'll keep
-// around and copy on write when we serialize.
-// struct Schedule {
+/// Base "x" value for pixel coordinates tracked in the hitData field. This is the default value for all fields, as per the SVG files
+#[allow(unused)]
+pub const STADIUM_X: f32 = 123.7;
+/// Base "y" value for pixel coordinates tracked in the hitData field. This is the default value for all fields, as per the SVG files
+#[allow(unused)]
+pub const STADIUM_Y: f32 = 201.9;
 
-// }
-
-// impl Schedule {
-//     ///
-//     /// 
-//     /// 
-
-//     fn get_year(sport_id: u8, year: u16) -> Vec<Schedule> {
-//         unimplemented!()
-//     }
-
-// }

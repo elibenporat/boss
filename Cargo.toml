@@ -1,6 +1,6 @@
 [package]
 name = "boss"
-version = "0.0.3"
+version = "0.0.4"
 
 readme = "README.md"
 description = "Baseball Open Source Software"
@@ -12,6 +12,7 @@ license = "MIT"
 documentation = "https://docs.rs/boss"
 homepage = "https://docs.rs/boss"
 
+[badges]
 maintenance = { status = "actively-developed" }
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

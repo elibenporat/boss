@@ -155,6 +155,9 @@ pub (crate) enum PitchTypeCode {
     SC,
     SI,
     SL,
+    SU,
+    FL,
+    GY,
     #[serde(other)]
     UN,
 }
@@ -181,6 +184,9 @@ pub (crate) enum PitchTypeDescription {
     Screwball,
     Sinker,
     Slider,
+    Slurve,
+    Slutter,
+    Gyroball,
     #[serde(other)]
     Unknown,
 }
@@ -570,11 +576,8 @@ pub fn parse_test_data () {
     // }
 
     let test_parse: Game = serde_json::from_str(MLB_DATA).unwrap();
-    // dbg!(&test_parse);      
+    dbg!(&test_parse);      
     
-    let x: [Game; 1] = [test_parse];
-    let size: &[Game] = &x;
-    dbg!(std::mem::size_of_val(size));
 
 }
 

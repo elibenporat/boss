@@ -1,101 +1,74 @@
-///Various helpers - not sure yet if I'll need this module, mostly just here for experimenting
-/// 
-/// 
+//! Utility crate used by other modules. Right now only includes an async get_all function.
+//! Computation time to parse JSON is negligible, so we will simply make a big network request,
+//! or rather a batch of requests, then process them.
 
-use futures::stream::futures_unordered::*;
 use isahc::prelude::*;
-use std::time::Instant;
-use rayon::prelude::*;
-
-// const NUMBERS: [&str; 10] = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
-
-// fn to_str(num: T, len: u8) -> &'static str
-// where T:Unsigned {
-//     let mut 
-//     for _ in 0..len {
-        
-//     }
-// }
+use crate::*;
 
 
-pub fn stream () {
+/// This function is deprecated, use the stream utility
+pub async fn get_all(urls: Vec<String>) -> Result<Vec<Response<Body>>, isahc::Error> {
 
-    // let schedule_stream = FuturesUnordered::new();
-    let urls: Vec<String> = vec![ 
-        "http://statsapi.mlb.com/api/v1//schedule?sportId=1&startDate=01/01/2012&endDate=12/31/2012".to_string(),
-        "http://statsapi.mlb.com/api/v1//schedule?sportId=1&startDate=01/01/2013&endDate=12/31/2013".to_string(),
-        "http://statsapi.mlb.com/api/v1//schedule?sportId=1&startDate=01/01/2014&endDate=12/31/2014".to_string(),
-        "http://statsapi.mlb.com/api/v1//schedule?sportId=1&startDate=01/01/2015&endDate=12/31/2015".to_string(),
-        "http://statsapi.mlb.com/api/v1//schedule?sportId=1&startDate=01/01/2016&endDate=12/31/2016".to_string(),
-        "http://statsapi.mlb.com/api/v1//schedule?sportId=1&startDate=01/01/2017&endDate=12/31/2017".to_string(),
-        "http://statsapi.mlb.com/api/v1//schedule?sportId=11&startDate=01/01/2012&endDate=12/31/2012".to_string(),
-        "http://statsapi.mlb.com/api/v1//schedule?sportId=11&startDate=01/01/2013&endDate=12/31/2013".to_string(),
-        "http://statsapi.mlb.com/api/v1//schedule?sportId=11&startDate=01/01/2014&endDate=12/31/2014".to_string(),
-        "http://statsapi.mlb.com/api/v1//schedule?sportId=11&startDate=01/01/2015&endDate=12/31/2015".to_string(),
-        "http://statsapi.mlb.com/api/v1//schedule?sportId=11&startDate=01/01/2016&endDate=12/31/2016".to_string(),
-        "http://statsapi.mlb.com/api/v1//schedule?sportId=11&startDate=01/01/2017&endDate=12/31/2017".to_string(),
-    ];
+    futures::future::try_join_all(
+        urls.into_iter()
+        .map(|link| isahc::get_async(&link))
+    )    
+    .await
+}
 
-    let resp_stream = FuturesUnordered::new();
-    let mut par_resp_stream: Vec<_> = vec![];
+/// Splits the network request into CHUNK_SIZE items. Only use if the regular stream function throws a network
+/// timeout error. Will perform slightly worse than the stream function since it waits for each CHUNK_SIZE to come in.
+pub fn stream_chunked (urls: Vec<String>) -> Vec<Result<String, std::io::Error>> {
+
+    let mut stream_result: Vec<Result<String, std::io::Error>> = Vec::with_capacity(urls.len());
+
+    for chunk in urls.chunks(CHUNK_SIZE) {
+        let result = stream(chunk.to_owned());
+        stream_result.extend(result);
+    }
+
+    stream_result
+}
+
+
+/// Stream will send out a bunch of requests and collect them as they come in. This is an extremely efficient
+/// method for collecting an arbitrary number of files from the network.
+pub fn stream (urls: Vec<String>) -> Vec<Result<String, std::io::Error>> {
    
-    let par_async_time = Instant::now();
-    for _ in 0..10 {
-        let par_resp = FuturesUnordered::new();
-        for url in urls.clone() {
-            par_resp.push(async {isahc::get_async(url).await.unwrap().text().unwrap()});
-        }
-        par_resp_stream.push(par_resp);
-    }
+    let resp_stream = futures::stream::FuturesUnordered::new();
+    for url in urls {
+        resp_stream.push (
+            async {
+                isahc::get_async(url).await?.text_async().await
+            }
+        )
+    };
 
-    let _results: Vec<Vec<String>> = par_resp_stream.into_par_iter()
-                    .map(|stream| futures::executor::block_on_stream(stream).collect() )
-                    .collect()
-                    ;
-    
-    println!("Finished parallel async pull in: {:?}", par_async_time.elapsed());
+    futures::executor::block_on_stream(resp_stream).collect()
 
-    let async_time = Instant::now();
-    for _ in 0..10 {
-        for url in urls.clone() {
-            resp_stream.push(async {isahc::get_async(url).await.unwrap().text().unwrap()});
-
-        }
-    }
-    let _results: Vec<String> = futures::executor::block_on_stream(resp_stream).collect();
-    
-    
-    println!("Finished async pull in: {:?}", async_time.elapsed());
-    
-
-    let sync_time = Instant::now();
-
-    for _ in 0..10 {
-        for url in urls.clone(){
-            let _result = isahc::get(url).unwrap().text().unwrap();
-        }
-    }
-     println!("Finished sync pull in: {:?}", sync_time.elapsed());
-
-
-    // let games:Vec<crate::schedule::Games> = results
-    //     .iter()
-    //     .map(|json| {
-    //         let sched: crate::schedule::ScheduleDe = serde_json::from_str(&json).unwrap();
-    //         let games: crate::schedule::Games = sched.into();
-    //         games
-    //     })
-    //     .collect()
-    //     ;
-
-    // for game in games {
-    //     dbg!(&game[0].game_date_year);
-    // }
-
-    
-    // for url in urls {
-    //     let resp_fut = isahc::get_async(url).unwrap().text().unwrap();
-    //     schedule_stream.push()
-    // }
 
 }
+
+// pub async fn get_json(urls: Vec<String>) -> Result<Vec<String>, isahc::Error> {
+
+//     let responses = futures::executor::block_on(get_all(urls))?;
+
+//     responses
+//         .into_iter()
+//         .map(|mut resp| async {resp.text_async().await} )
+//         .collect()
+// }
+
+type IsahcResponse = Result<Response<Body>, isahc::Error>;
+pub async fn get_three(first: &str, second: &str, third: &str) 
+-> (IsahcResponse, IsahcResponse, IsahcResponse) {
+
+    futures::join!(   
+        isahc::get_async(first),
+        isahc::get_async(second),
+        isahc::get_async(third),
+    )
+}
+
+
+
