@@ -74,7 +74,7 @@ impl Schedule {
 
     fn get_years <Y: YearRange> (sport_id: u8, years: Y) -> Schedule 
     where Y:IntoIterator,
-    <Y as IntoIterator>::Item: ::std::fmt::Display,
+    <Y as IntoIterator>::Item: Display,
     {       
         let base_url = format!("{}/schedule?sportId={}&startDate=01/01/", crate::BASE_URL, sport_id);
 

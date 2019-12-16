@@ -7,8 +7,8 @@ fn main() {
     // schedule::test_schedule();
     // utils::stream();
 
-    // player_changes::test_changes();
+    player_changes::test_changes();
 
-    venues::test_venues();
+    // venues::test_venues();
 
 }

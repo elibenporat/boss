@@ -22,55 +22,68 @@ pub fn test_venues () {
 
     for venue in venue_data.venues {
         let svg = get_svg(venue.id);
-        if svg == "".to_string() {
-            dbg! (venue.id);
-        }
+        println! ("Venue: {} | {:?}", venue.id, svg);
     }
 
 }
 
 // This is a horrible, ugly way to do it, but it works
-fn get_svg (id: u32) -> String {
+fn get_svg (id: u32) -> Option<(f32,f32)> {
 
     let link = format!("http://mlb.mlb.com/images/gameday/fields/svg/{}.svg", id);
     let svg_data = isahc::get(link).unwrap().text().unwrap();
 
     if svg_data.contains("Page Not Found") {
-        return "No SVG Data".to_string();
+        return None;
     }
 
-    let first_attempt = svg_data
-        .split(r#"<g id="Base"#).nth(1).unwrap_or("")
-        .split("<polygon").nth(1).unwrap_or("")
+    // let first_attempt = svg_data
+    //     .split(r#"<g id="Base"#).nth(1).unwrap_or("")
+    //     .split("<polygon").nth(1).unwrap_or("")
+    //     .split("points=").nth(1).unwrap_or("")
+    //     .split(" ").nth(2).unwrap_or("")
+    //     .to_owned()
+    //     ;
+    
+    // let second_attempt = svg_data
+    //     .split(r#"<polygon id="home"#).nth(1).unwrap_or("")
+    //     .split("points=").nth(1).unwrap_or("")
+    //     .split(" ").nth(2).unwrap_or("")
+    //     .to_owned()
+    //     ;
+    
+    // let third_attempt = svg_data
+    //     .split("<polygon fill=\"#FFFFFF\" stroke=\"#FFFFFF\"").nth(1).unwrap_or("")
+    //     .split("points=").nth(1).unwrap_or("")
+    //     .split(" ").nth(2).unwrap_or("")
+    //     .to_owned()
+    //     ;
+    
+    
+    // let result = 
+    //     if first_attempt != "".to_string() {first_attempt}
+    //     else if second_attempt != "".to_string() {second_attempt}
+    //     else {third_attempt};
+
+    // The last <polyline> tag in the svg represents the baselines. The middle element is where the fair lines meet, which is the ideal
+    // point to set the (x,y) coordinates
+
+    let result = svg_data
+        .split("<polyline").last().unwrap()
         .split("points=").nth(1).unwrap_or("")
-        .split(" ").nth(2).unwrap_or("")
-        .to_owned()
-        ;
+        .split(" ").nth(1).unwrap_or("")
+        .to_owned();
+
+    if !result.contains(",") {return None};
     
-    let second_attempt = svg_data
-        .split(r#"<polygon id="home"#).nth(1).unwrap_or("")
-        .split("points=").nth(1).unwrap_or("")
-        .split(" ").nth(2).unwrap_or("")
-        .to_owned()
-        ;
+    let split:Vec<&str> = result.split(",").collect();
+
+    let (x, y) = (split[0].parse::<f32>().unwrap(), split[1].parse::<f32>().unwrap());
+
+    Some((x,y))
+
+
     
-    let third_attempt = svg_data
-        .split("<polygon fill=\"#FFFFFF\" stroke=\"#FFFFFF\"").nth(1).unwrap_or("")
-        .split("points=").nth(1).unwrap_or("")
-        .split(" ").nth(2).unwrap_or("")
-        .to_owned()
-        ;
-    
-    
-    if first_attempt != "".to_string() {
-        first_attempt
-    }
-    else if second_attempt != "".to_string() {
-        second_attempt
-    }
-    else {
-        third_attempt
-    }
 
 }
 

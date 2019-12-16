@@ -35,6 +35,7 @@ pub mod utils;
 pub mod boxscore;
 pub mod player_changes;
 pub mod venues;
+pub mod error;
 
 pub (crate) const BASE_URL: &'static str = "http://statsapi.mlb.com/api/v1/";
 
@@ -43,9 +44,10 @@ pub (crate) const BASE_URL: &'static str = "http://statsapi.mlb.com/api/v1/";
 pub const CHUNK_SIZE: usize = 30;
 
 /// Base "x" value for pixel coordinates tracked in the hitData field. This is the default value for all fields, as per the SVG files
+/// If we don't have an svg file for a particular venue_id - we'll fill in the x value with this constant
 #[allow(unused)]
-pub const STADIUM_X: f32 = 123.7;
+pub const STADIUM_X: f32 = 125.2;
 /// Base "y" value for pixel coordinates tracked in the hitData field. This is the default value for all fields, as per the SVG files
+/// If we don't have an svg file for a particular venue_id - we'll fill in the y value with this constant
 #[allow(unused)]
-pub const STADIUM_Y: f32 = 201.9;
-
+pub const STADIUM_Y: f32 = 203.5;
