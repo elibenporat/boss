@@ -61,5 +61,5 @@ BOSS relies on three crates for the bullk of its workload. <br>
 
 * Legacy tools to gather data from the deprecated gameday xml files
 * Complete rust bindings to the mlb.com stats api
-* Incoporate the Rust retrosheet parser and try to align the data to the GameDay and StatCast data sets. Hopefully we will be able to use the existing code base
+* Incorporate the Rust retrosheet parser and try to align the data to theStatCast data set. Hopefully we will be able to use the existing code base We're capturing the xref_ids so this should be possible.
 * Export flattened (denormalized) games to CSV (Ideally, there should be an option to split out into 2 files, one for metadata, one for play-by-play, rather than just one big flat file)
