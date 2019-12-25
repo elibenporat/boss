@@ -9,12 +9,27 @@
 
 use serde::{Deserialize};
 use std::collections::HashMap;
+use regex::Regex;
 
+//Horrible hack to allow us to pull in the players. Somewhat brittle, but can't figure
+//out a better way to do it
+fn fix_boxscore (boxscore: &str) -> String {
+  let regex = Regex::new(r#""ID\d{6}" : "#).unwrap();
+  let regex_ws = Regex::new(r"\s+").unwrap();
+
+  regex
+    .replace_all(&regex_ws.replace_all(boxscore, " "), "")
+    .replace("players\" : {", "players\" : [")
+    .replace("}, \"batters\"", "], \"batters\"")
+}
 
 pub fn test_boxscore () {
 
-  let test: BoxScore = serde_json::from_str(BOXSCORE_567112).unwrap();
-  let test_2: BoxScore = serde_json::from_str(BOXSCORE_240198).unwrap();
+  let boxscore_567112 = fix_boxscore(BOXSCORE_567112);
+  let boxscore_240198 = fix_boxscore(BOXSCORE_240198);
+ 
+  let test: BoxScore = serde_json::from_str(&boxscore_567112).unwrap();
+  let test_2: BoxScore = serde_json::from_str(&boxscore_240198).unwrap();
 
   dbg! (test);
   dbg! (test_2);
@@ -35,8 +50,18 @@ pub struct BoxScore {
   game_wind_direction: Option<WindDirection>,
   
   home_team_id: u32,
-  home_team_name: String,
-  home_team_location: String,
+  away_team_id: u32,
+  home_league_id: u32,
+  away_league_id: u32,
+  home_sport_id: u32,
+  away_sport_id: u32,
+  home_parent_team_id: u32,
+  away_parent_team_id: u32,
+  
+  hp_umpire_id: Option<u32>,
+
+  home_players: Vec<Player>,
+  away_players: Vec<Player>,
 
 
 }
@@ -114,6 +139,12 @@ impl From <BoxScoreDe> for BoxScore {
       _ => Some(first_pitch_f32),
     };
 
+    let hp_umpire_id = box_score.officials.iter()
+                        .filter(|ump| ump.official_type == OfficialType::HomePlate)
+                        .map(|ump| ump.official.id)
+                        .nth(0)
+                        ;
+
     BoxScore {
       game_weather_temp_f,
       game_weather_temp_c,
@@ -123,8 +154,16 @@ impl From <BoxScoreDe> for BoxScore {
       attendance,
       first_pitch,
       home_team_id: box_score.teams.home.team.id,
-      home_team_name: box_score.teams.home.team.name,
-      home_team_location: box_score.teams.home.team.location_name,
+      away_team_id: box_score.teams.away.team.id,
+      home_league_id: box_score.teams.home.team.league.id,
+      away_league_id: box_score.teams.away.team.league.id,
+      home_sport_id: box_score.teams.home.team.sport.id,
+      away_sport_id: box_score.teams.away.team.sport.id,
+      home_parent_team_id: box_score.teams.home.team.parent_org_id.unwrap_or(box_score.teams.home.team.id),
+      away_parent_team_id: box_score.teams.away.team.parent_org_id.unwrap_or(box_score.teams.away.team.id),
+      hp_umpire_id,
+      home_players: box_score.teams.home.players,
+      away_players: box_score.teams.away.players,
     }
   }
 }
@@ -200,28 +239,108 @@ impl From<&str> for WindDirection {
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all="camelCase")]
-pub (crate) struct BoxScoreDe {
+struct BoxScoreDe {
   teams: Teams,
-  // officials: Officials,
   info: Vec<Info>,
+  officials: Vec<Officials>,
 }
 
 #[derive(Deserialize, Debug)]
-pub (crate) struct Teams {
+#[serde(rename_all="camelCase")]
+struct Officials {
+  official: Official,
+  official_type: OfficialType,
+}
+
+#[derive(Deserialize, Debug)]
+struct Official {
+  id: u32,
+}
+
+#[derive(Deserialize, Debug, Eq, PartialEq)]
+enum OfficialType {
+  #[serde(alias="Home Plate")]
+  HomePlate,
+  //we only really care about the HP Umpire, so we're going to ignore all other umps
+  #[serde(other)]
+  Other,
+}
+
+#[derive(Deserialize, Debug)]
+struct Teams {
     away: TeamData,
     home: TeamData,
 }
 
 #[derive(Deserialize, Debug)]
-pub (crate) struct TeamData {
+struct TeamData {
   team: Team,
+  // #[serde(rename="player")]
+  players: Vec<Player>,
 }
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all="camelCase")]
-pub (crate) struct Team {
+struct PlayerID {
+    person: Person,
+    position: Position,
+    batting_order: Option<String>,
+    stats: Stats,
+}
+
+#[serde(from = "PlayerID")]
+#[derive(Deserialize, Debug)]
+struct Player {
   id: u32,
-  //Future optimization to convert these to an enum, with yearly updates
+  position: Pos,
+  batting_order: Option<u8>,
+}
+
+impl From<PlayerID> for Player {
+  fn from(player: PlayerID) -> Player {
+
+    let batting_order: Option<u16> = match player.batting_order {
+      Some(order) => order.parse().ok(),
+      None => None,
+    };
+
+    let batting_order: Option<u8> = match batting_order {
+      Some (order) => Some((order/100) as u8),
+      None => None,
+    };
+
+    let sp: bool = match player.stats.pitching.games_started {
+      Some(games_started) => games_started == 1,
+      None => false,
+    };
+
+    let position = match player.position.abbreviation {
+      Pos::_P => {
+        if sp {Pos::_SP} else {Pos::_RP}
+      }
+      _ => player.position.abbreviation, 
+    };
+
+    Player {
+      id: player.person.id,
+      position,
+      batting_order,
+    }
+
+  }
+}
+
+
+#[derive(Deserialize, Debug)]
+struct Person {
+  id: u32,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(rename_all="camelCase")]
+struct Team {
+  id: u32,
+  //Future optimization to convert these to an enum, with yearly updates?
   name: String,
   team_code: String,
   location_name: String,
@@ -234,57 +353,80 @@ pub (crate) struct Team {
 }
 
 #[derive(Deserialize, Debug)]
-pub (crate) struct IDName {
+struct IDName {
   id: u32,
   name: String,
 }
 
 #[derive(Deserialize, Debug)]
-pub (crate) struct Info {
+struct Info {
   label: String,
   value: Option<String>,
 }
 
 
-// #[derive(Deserialize, Debug)]
-// #[serde(rename_all="camelCase")]
-// pub (crate) struct BoxScore {
-//     players: Vec<PlayerID>,
-// }
 
 
 #[derive(Deserialize, Debug)]
-#[serde(rename_all="camelCase")]
-pub (crate) struct PlayerID {
-    person: Person,
-    position: Position,
-    batting_order: Option<u16>,
-    stats: Stats,
+struct Position {
+  abbreviation: Pos,
+}
+
+#[derive(Deserialize, Debug)]
+enum Pos {
+  #[serde(rename="C")]
+  _C,
+  #[serde(rename="1B")]
+  _1B,
+  #[serde(rename="2B")]
+  _2B,
+  #[serde(rename="3B")]
+  _3B,
+  #[serde(rename="SS")]
+  _SS,
+  #[serde(rename="LF")]
+  _LF,
+  #[serde(rename="RF")]
+  _RF,
+  #[serde(rename="CF")]
+  _CF,
+  #[serde(rename="P")]
+  _P,
+  _SP,
+  _RP,
+  #[serde(other)]
+  _Bench,
+}
+
+impl From<Pos> for String {
+  fn from (pos: Pos) -> String {
+    match pos {
+      Pos::_C => "C",
+      Pos::_1B => "1B",
+      Pos::_2B => "2B",
+      Pos::_3B => "3B",
+      Pos::_SS => "SS",
+      Pos::_LF => "LF",
+      Pos::_CF => "CF",
+      Pos::_RF => "RF",
+      Pos::_P => "P",
+      Pos::_SP => "SP",
+      Pos::_RP => "P",
+      Pos::_Bench => "Bench",
+    }.to_string()
+  }
 }
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all="camelCase")]
-pub (crate) struct Person {
-
+struct Stats {
+    pitching: PitchingStats,
 }
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all="camelCase")]
-pub (crate) struct Position {
-
-}
-
-
-#[derive(Deserialize, Debug)]
-#[serde(rename_all="camelCase")]
-pub (crate) struct Stats {
-    pitching: PitchingStats
-}
-
-#[derive(Deserialize, Debug)]
-#[serde(rename_all="camelCase")]
-pub (crate) struct PitchingStats {
-    games_started: Option<bool>
+struct PitchingStats {
+    games_started: Option<u8>,
 }
 
 #[allow(unused)]
