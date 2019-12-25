@@ -4,7 +4,16 @@
 
 use isahc::prelude::*;
 use crate::*;
+use std::env;
+
 // use crate::error::*;
+
+//TODO - ADD ERROR HANDLING
+pub fn get_directory() -> String {
+    let path = env::current_dir().unwrap();
+    path.to_str().unwrap().into()
+}
+
 
 /// Splits the network request into CHUNK_SIZE items. Only use if the regular stream function throws a network
 /// timeout error. Will perform slightly worse than the stream function since it waits for each CHUNK_SIZE to come in.

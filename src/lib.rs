@@ -8,11 +8,12 @@
 //! carefully mapped. The challenge with baseball data isn't the computational complexity of data gathering, it is the sheer
 //! size of the data set. One of BOSS' primary design goals is to be as efficient as possible.
 //! 
-//! Perhaps the biggest performance optimization in BOSS is the use of parallel asynchronous streams. Most of the time this 
+//! Perhaps the biggest performance optimization in BOSS is the use of asynchronous streams. Most of the time this 
 //! library will spend will be waiting on data from the network. Being able to stream process items as they become available is 
 //! critical to having a performant application. 
 //! 
-//! 
+//! All ids in this crate are u32. This applies to players, teams, venues, etc. This is slightly inefficient as a lot of ids could be
+//! u8s, however we are choosing consistency over minor-optimization.
 
 
 
@@ -36,6 +37,10 @@ pub mod boxscore;
 pub mod player_changes;
 pub mod venues;
 pub mod error;
+pub mod cache;
+pub mod sports;
+
+
 
 pub (crate) const BASE_URL: &'static str = "http://statsapi.mlb.com/api/v1/";
 

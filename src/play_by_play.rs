@@ -20,6 +20,7 @@
 
 // use isahc::prelude::*;
 use serde::{Deserialize};
+use std::time::{Instant};
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all="camelCase")]
@@ -575,8 +576,23 @@ pub fn parse_test_data () {
     //     test_vec.push(test_parse);
     // }
 
-    let test_parse: Game = serde_json::from_str(MLB_DATA).unwrap();
-    dbg!(&test_parse);      
+    let time_started = Instant::now();
+
+    for _ in 0 .. 10_000 {
+      let _test: Game = serde_json::from_str(MLB_DATA).unwrap();
+    }
+
+    println! ("10,000 Took: {} seconds", time_started.elapsed().as_secs());
+
+    let time_started = Instant::now();
+
+    for _ in 0 .. 100_000 {
+      let _test: Game = serde_json::from_str(MLB_DATA).unwrap();
+    }
+
+    println! ("100,000 Took: {} seconds", time_started.elapsed().as_secs());
+    
+   
     
 
 }

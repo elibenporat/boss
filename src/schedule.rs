@@ -7,8 +7,10 @@
 //! The schedule is the starting point for gathering play by play data since it gives us a comprehensive list of all the games available to us.
 //! A number of convenience functions are provided by this module to allow for easy extraction of the set of games you are looking for.
 //!
+//! Important "Hydrations" include:
+//! * gameInfo (has attendance and first pitch)
+//! * weather (instead of getting from the boxscore)
 //! 
-//!  
 //! 
 
 use serde::{Deserialize};
