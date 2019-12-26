@@ -6,8 +6,9 @@ that looks like this: http://statsapi.mlb.com/api/v1/sports/{sport_id}/players/?
 http://statsapi.mlb.com/api/v1/people/545361?hydrate=xrefId will also give info on IDs for other platforms
 
 Other Hyrdrate fields: transactions - this will give us detailed data on injuries, trades, options, etc. Will likely require a lot of text-analysis to get useful data out of it.
+
 To get player changes - we can get that from: http://lookup-service-prod.mlb.com/json/named.ops_player_changes.bam?change_date=20191205 might be able to use these for historical player weights, or might be easier to go to
-the old gameday XML files for this.
+the old gameday XML files for this. **UPDATE - This is totally useless
 
 Unfortunately, we can't do this for coaches and umpires, but those should be a relatively smaller proportion of the pull.
 

@@ -1,12 +1,46 @@
-//! Utility crate used by other modules. Right now only includes an async get_all function.
-//! Computation time to parse JSON is negligible, so we will simply make a big network request,
-//! or rather a batch of requests, then process them.
+//! Utility crate used by other modules. Inlcludes streaming functions as well as simple date math.
+//! 
+//! 
+//! 
+
 
 use isahc::prelude::*;
 use crate::*;
 use std::env;
 
 // use crate::error::*;
+
+/// Date Struct used by the crate. We'll build our own date handling rather than bring in an extra depedency. The date maths we need to do are
+/// fairly simple (calculating Batter/Pitcher age) and should help keep our dependency tree as small as possible.
+/// To calculate age, we'll simply do year-year + (month-month)/12 + (day-day)/365.25. We'll be off by a little on the day side,
+/// but it doesn't really matter if we track a batter as 24.21 years old instead of 24.25 years old.
+/// 
+/// We ignore the time from the gameDate string as we'll get more accurate info from the boxscore, where we want the "Frist Pitch"
+#[derive(Debug)]
+pub struct Date {
+    pub year: u16,
+    pub month: u8,
+    pub day: u8,
+}
+
+/// Get the difference between two dates in units of years. Does a rough approximation only. This is primarily used for computing
+/// the age of the batter and does not need to be super precise. This saves us from having to import a library to do proper date
+/// math. This may change in the future.
+impl std::ops::Sub for Date {
+    type Output = f32;
+
+    fn sub(self, other:Date) -> f32 {
+        
+        let year_diff = self.year as f32 - other.year as f32;
+        let month_diff = self.month as f32 - other.month as f32;
+        let day_diff = self.day as f32 - other.day as f32;
+
+        year_diff + (month_diff / 12f32 ) + (day_diff / 365.25f32)
+    
+    }
+
+}
+
 
 //TODO - ADD ERROR HANDLING
 pub fn get_directory() -> String {

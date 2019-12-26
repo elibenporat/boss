@@ -19,17 +19,18 @@
 
 
 // use isahc::prelude::*;
-use serde::{Deserialize};
+use serde::{Deserialize, Serialize};
 use std::time::{Instant};
 
-#[derive(Deserialize, Debug)]
+
+#[derive(Debug, Deserialize)]
 #[serde(rename_all="camelCase")]
-pub (crate) struct Game {
+struct Game {
     all_plays: Vec<AllPlays>,
 }
 
-#[derive(Deserialize, Debug)]
-pub (crate) struct AllPlays {
+#[derive(Debug, Deserialize)]
+struct AllPlays {
     result: PlateAppearanceData,
     about: About,
     matchup: MatchupData,
@@ -39,17 +40,17 @@ pub (crate) struct AllPlays {
     play_events: Vec<PlayEvent>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Deserialize)]
 #[serde(rename_all="camelCase")]
-pub (crate) enum PlayEventType  {
+enum PlayEventType  {
     Action,
     Pitch,
     Pickoff,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Deserialize)]
 #[serde(rename_all="camelCase")]
-pub (crate) struct PitchDataParse {
+struct PitchDataParse {
     strike_zone_top: f32,
     strike_zone_bottom: f32,
     coordinates: PitchCoordinates,
@@ -60,9 +61,9 @@ pub (crate) struct PitchDataParse {
     extension: Option<f32>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Deserialize)]
 #[serde(rename_all="camelCase")]
-pub (crate) struct PitchBreaks {
+struct PitchBreaks {
     break_length: f32,
     break_y: f32,
     spin_rate: f32,
@@ -70,8 +71,8 @@ pub (crate) struct PitchBreaks {
 }
 
 #[serde(rename_all="camelCase")]
-#[derive(Deserialize, Debug)]
-pub (crate) struct PitchCoordinates {
+#[derive(Debug, Deserialize)]
+struct PitchCoordinates {
     // x,y are the pixel coordinates on the screen. Mildly useful for minor league strike zone data
     x: f32,
     y: f32,
@@ -92,17 +93,17 @@ pub (crate) struct PitchCoordinates {
 
 }
 
-#[derive(Deserialize, Debug)]
-pub (crate) struct HitCoordinates {
+#[derive(Debug, Deserialize)]
+struct HitCoordinates {
     #[serde(alias="coordX")]
     x: f32,
     #[serde(alias="coordY")]
     y: f32,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Deserialize)]
 #[serde(rename_all="camelCase")]
-pub (crate) struct HitData {
+struct HitData {
     trajectory: Trajectory,
     hardness: Hardness,
     coordinates: HitCoordinates,
@@ -111,8 +112,8 @@ pub (crate) struct HitData {
     total_distance: Option<f32>,
 }
 
-#[derive(Deserialize, Debug)]
-pub (crate) enum Trajectory {
+#[derive(Debug, Deserialize, Serialize)]
+pub(crate) enum Trajectory {
     #[serde(alias = "line_drive", alias = "bunt_line_drive")]
     LineDrive,
     #[serde(alias = "fly_ball")]
@@ -123,22 +124,22 @@ pub (crate) enum Trajectory {
     GroundBall,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all="camelCase")]
-pub (crate) enum Hardness {
+pub(crate) enum Hardness {
     Soft,
     Medium,
     Hard,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all="camelCase")]
 pub (crate) struct PitchType {
     code: PitchTypeCode,
     description: PitchTypeDescription,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub (crate) enum PitchTypeCode {
     CH,
     CU,
@@ -163,7 +164,7 @@ pub (crate) enum PitchTypeCode {
     UN,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all="PascalCase")]
 pub (crate) enum PitchTypeDescription {
     Changeup,
@@ -195,7 +196,7 @@ pub (crate) enum PitchTypeDescription {
 // The PlayEvent can be either an event or a pitch. This is because non-pitch related things can happen between pitches,
 // such as subs, stolen bases, balks, etc. Unfortunately, this creates a less-than ideal initial struct, as we'll need to wrap
 // a bunch of fields in Options.
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Deserialize)]
 #[serde(rename_all="camelCase")]
 pub (crate) struct PlayEvent {
     details: PlayEventDetails,
@@ -207,7 +208,7 @@ pub (crate) struct PlayEvent {
 }
 
 // We ignore the "count" as we'll be computing the state manually
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Deserialize)]
 #[serde(rename_all="camelCase")]
 pub (crate) struct PlayEventDetails {
     event: Option<Event>,
@@ -221,8 +222,8 @@ pub (crate) struct PlayEventDetails {
 ///Result captures plate appearance level details. We ignore the "rbi", "awayscore" and "homescore" fields, as we'll be manually tracking game state,
 ///including RE24/288, Win Probability and other metadata such as previous pitch. We are ignoring the plate appearance description for performance reasons. 
 /// All the relevant data are captured in other data fields.
-#[derive(Deserialize, Debug)]
-pub (crate) struct PlateAppearanceData {
+#[derive(Debug, Deserialize)]
+struct PlateAppearanceData {
     #[serde(rename="type")]
     result_type: ResultType,
     #[serde(rename="event")]
@@ -233,15 +234,15 @@ pub (crate) struct PlateAppearanceData {
     // plate_appearance_result_description: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all="camelCase")]
-pub (crate) enum HalfInning {
+pub(crate) enum HalfInning {
     Top,
     Bottom,
 }
 
-#[derive(Deserialize, Debug)]
-pub (crate) struct About {
+#[derive(Debug, Deserialize)]
+struct About {
     #[serde(rename="atBatIndex")]
     // The record for plate appearances in an extra inning game is 12, since 12x18 is less than u8::max(), we can safely use a u8 here
     plate_appearance_index: u8,
@@ -251,66 +252,68 @@ pub (crate) struct About {
     inning_num: u8
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Deserialize)]
 #[serde(field_identifier, rename_all="camelCase")]
-pub (crate) enum ResultType {
+enum ResultType {
     AtBat,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Deserialize)]
 #[serde(rename_all="camelCase")]
-pub (crate) struct Matchup {
+struct Matchup {
     batter : Player,
     pitcher: Player,
     bat_side: Side,
     pitch_hand: Side,
 }
 
-#[derive(Deserialize, Debug)]
-pub (crate) struct Player {
+#[derive(Debug, Deserialize)]
+struct Player {
     id: u32,
 }
 
-#[derive(Deserialize, Debug)]
-pub (crate) struct Side {
+#[derive(Debug, Deserialize, Serialize)]
+pub(crate) struct Side {
     code: SideCode,
     description: SideDescription,
 }
 
-#[derive(Deserialize, Debug)]
-pub (crate) enum SideCode {
+#[derive(Debug, Deserialize, Serialize)]
+enum SideCode {
     L,
     R,
+    S,
 }
 
-#[derive(Deserialize, Debug)]
-pub (crate) enum SideDescription {
+#[derive(Debug, Deserialize, Serialize)]
+enum SideDescription {
     Left,
     Right,
+    Switch,
 }
 
-#[derive(Deserialize, Debug)]
-pub (crate) struct Runner {
+#[derive(Debug, Deserialize)]
+struct Runner {
     movement: RunnerMovement,
     details: RunnerDetails
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Deserialize)]
 #[serde(from = "Base")]
 struct BaseValue {
     value: u8,
     runs: u8,
 }
 
-#[derive(Deserialize, Debug)]
-pub (crate) struct RunnerMovement {
+#[derive(Debug, Deserialize)]
+struct RunnerMovement {
     start: BaseValue,
     end: BaseValue,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Deserialize)]
 #[serde(rename_all="camelCase")]
-pub (crate) struct RunnerDetails {
+struct RunnerDetails {
     runner: Player,
     event: Event,
     event_type: EventType,
@@ -321,9 +324,9 @@ pub (crate) struct RunnerDetails {
 
 
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Deserialize)]
 #[serde(untagged)]
-pub (crate) enum Base {
+enum Base {
     BaseState (String),
     Null,
 }
@@ -350,9 +353,9 @@ impl From<Base> for BaseValue {
 /// RunnerData captures all the runner movement for any pitch or action. We ignore the "movementReason" field since
 /// we can get better info from the Event/EventType fields. At this point, the base states are flattened and converted
 /// to base values.
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Deserialize)]
 #[serde(from="Runner")]
-pub(crate) struct RunnerData {
+struct RunnerData {
     runner_id: u32,
     start_base_value: u8,
     end_base_value: u8,
@@ -363,9 +366,9 @@ pub(crate) struct RunnerData {
     earned: bool,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Deserialize)]
 #[serde(from="Matchup")]
-pub(crate) struct MatchupData {
+struct MatchupData {
     batter_id: u32,
     batter_bat_side_code: SideCode,
     batter_bat_side_desc: SideDescription,
@@ -415,7 +418,7 @@ impl From <Matchup> for MatchupData {
 #[allow(non_camel_case_types)]
 #[derive(Debug, Deserialize)]
 #[serde(field_identifier)]
-pub (crate) enum EventType {
+enum EventType {
   balk,
   fan_interference,
   other_advance,
@@ -477,7 +480,7 @@ pub (crate) enum EventType {
 /// background. TODO: use this for both the "event" and "eventType" fields to see where there are differences
 #[derive(Debug, Deserialize)]
 #[serde(field_identifier)]
-pub (crate) enum Event {
+enum Event {
     #[serde(alias = "Game Advisory")]
     GameAdvisory,
     #[serde(alias = "Ejection")]
@@ -557,9 +560,9 @@ pub (crate) enum Event {
     OffensiveSubstitution,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Deserialize)]
 #[serde(rename_all="camelCase")]
-pub (crate) struct PlateAppearance {
+struct PlateAppearance {
     #[serde(rename="type")]
     result_type: ResultType,
     event: Event,

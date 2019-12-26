@@ -3,7 +3,8 @@ BOSS | Baseball Open Source Software
 
 A pure Rust baseball data aggregation and analytics library. For now supports easy data gathering from the MLB Stats API. Eventually, other sources such as RetroSheet and NCAA will be added.
 
-All data retrieved by this application are subject to [copyright](http://gdx.mlb.com/components/copyright.txt) MLB Advanced Media, L.P. The author and this project are not affiliated with Major League Baseball.
+All data retrieved by this application are subject to [copyright](http://gdx.mlb.com/components/copyright.txt) MLB Advanced Media, L.P. 
+The author and this project are not affiliated with Major League Baseball.
  
 BOSS is designed from the ground up to be extremely efficient. All text fields that can be converted to an enum have been carefully mapped, creating a highly compressed data set. The challenge with baseball data isn't the computational complexity of data gathering, it is the sheer size of the data set. One of BOSS' primary design goals is to be as efficient as possible.
 
@@ -37,7 +38,7 @@ boss = "0.1"
 <b>Ruby</b><br>
 [MLBStatsAPI](https://github.com/Fustrate/mlb_stats_api) by Steven Hoffman
 
-I'm sure there are more that I'm missing, please open an issue if there's a relevant project that should be added. With respect to the MLB Stats API, toddrob99's is probably the most complete of the bunch. Bill Petti's baseballr is probably the most complete package in terms of the sources it taps into. This package intends to borrow heavily from Bill's project where relevant :).
+I'm sure there are more that I'm missing, please open an issue if there's a relevant project that should be added. With respect to the MLB Stats API, toddrob99's is probably the most complete of the bunch. Bill Petti's baseballr is probably the most complete package in terms of the sources it taps into. Toddrob99's project was incredibly helpful in finding a lot of the nitty gritty details. Thank you!
 
 ### Motivation
 

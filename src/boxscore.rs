@@ -63,7 +63,41 @@ pub struct BoxScore {
   home_players: Vec<Player>,
   away_players: Vec<Player>,
 
+  home_defense: Defense,
+  away_defense: Defense,
 
+}
+
+#[derive(Debug)]
+struct Defense {
+  catcher: Option<u32>,
+  first_base: Option<u32>,
+  second_base: Option<u32>,
+  short_stop: Option<u32>,
+  third_base: Option<u32>,
+  left_field: Option<u32>,
+  right_field: Option<u32>,
+  center_field: Option<u32>,
+}
+
+impl From <Vec<Player>> for Defense {
+  fn from (players: Vec<Player>) -> Defense {
+    let players: HashMap<Pos, u32> = players
+      .into_iter()
+      .map(|player| (player.position, player.id))
+      .collect();
+    
+    Defense {
+      catcher: players.get(&Pos::Catcher).copied(),
+      first_base: players.get(&Pos::FirstBase).copied(),
+      second_base: players.get(&Pos::SecondBase).copied(),
+      short_stop: players.get(&Pos::ShortStop).copied(),
+      third_base: players.get(&Pos::ThirdBase).copied(),
+      left_field: players.get(&Pos::LeftField).copied(),
+      right_field: players.get(&Pos::RightField).copied(),
+      center_field: players.get(&Pos::CenterField).copied(),
+    }
+  }
 }
 
 fn f_to_c (t: u8) -> i8 {
@@ -144,6 +178,8 @@ impl From <BoxScoreDe> for BoxScore {
                         .map(|ump| ump.official.id)
                         .nth(0)
                         ;
+    let home_defense = box_score.teams.home.players.clone().into();
+    let away_defense = box_score.teams.away.players.clone().into();
 
     BoxScore {
       game_weather_temp_f,
@@ -164,6 +200,8 @@ impl From <BoxScoreDe> for BoxScore {
       hp_umpire_id,
       home_players: box_score.teams.home.players,
       away_players: box_score.teams.away.players,
+      home_defense,
+      away_defense,
     }
   }
 }
@@ -261,9 +299,18 @@ struct Official {
 enum OfficialType {
   #[serde(alias="Home Plate")]
   HomePlate,
-  //we only really care about the HP Umpire, so we're going to ignore all other umps
-  #[serde(other)]
-  Other,
+  //we only really care about the HP Umpire, however, we want the program to panic if we see
+  //an umpire type that we don't expect
+  #[serde(alias="First Base")]
+  FirstBase,
+  #[serde(alias="Second Base")]
+  SecondBase,
+  #[serde(alias="Third Base")]
+  ThirdBase,
+  #[serde(alias="Left Field")]
+  LeftField,
+  #[serde(alias="Right Field")]
+  RightField,
 }
 
 #[derive(Deserialize, Debug)]
@@ -289,7 +336,7 @@ struct PlayerID {
 }
 
 #[serde(from = "PlayerID")]
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Copy, Clone)]
 struct Player {
   id: u32,
   position: Pos,
@@ -315,8 +362,8 @@ impl From<PlayerID> for Player {
     };
 
     let position = match player.position.abbreviation {
-      Pos::_P => {
-        if sp {Pos::_SP} else {Pos::_RP}
+      Pos::Pitcher => {
+        if sp {Pos::StartingPitcher} else {Pos::ReliefPitcher}
       }
       _ => player.position.abbreviation, 
     };
@@ -364,55 +411,52 @@ struct Info {
   value: Option<String>,
 }
 
-
-
-
 #[derive(Deserialize, Debug)]
 struct Position {
   abbreviation: Pos,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Hash, Eq, PartialEq, Copy, Clone)]
 enum Pos {
   #[serde(rename="C")]
-  _C,
+  Catcher,
   #[serde(rename="1B")]
-  _1B,
+  FirstBase,
   #[serde(rename="2B")]
-  _2B,
+  SecondBase,
   #[serde(rename="3B")]
-  _3B,
+  ThirdBase,
   #[serde(rename="SS")]
-  _SS,
+  ShortStop,
   #[serde(rename="LF")]
-  _LF,
+  LeftField,
   #[serde(rename="RF")]
-  _RF,
+  RightField,
   #[serde(rename="CF")]
-  _CF,
+  CenterField,
   #[serde(rename="P")]
-  _P,
-  _SP,
-  _RP,
+  Pitcher,
+  StartingPitcher,
+  ReliefPitcher,
   #[serde(other)]
-  _Bench,
+  Bench,
 }
 
 impl From<Pos> for String {
   fn from (pos: Pos) -> String {
     match pos {
-      Pos::_C => "C",
-      Pos::_1B => "1B",
-      Pos::_2B => "2B",
-      Pos::_3B => "3B",
-      Pos::_SS => "SS",
-      Pos::_LF => "LF",
-      Pos::_CF => "CF",
-      Pos::_RF => "RF",
-      Pos::_P => "P",
-      Pos::_SP => "SP",
-      Pos::_RP => "P",
-      Pos::_Bench => "Bench",
+      Pos::Catcher => "C",
+      Pos::FirstBase => "1B",
+      Pos::SecondBase => "2B",
+      Pos::ThirdBase => "3B",
+      Pos::ShortStop => "SS",
+      Pos::LeftField=> "LF",
+      Pos::CenterField => "CF",
+      Pos::RightField => "RF",
+      Pos::Pitcher => "P",
+      Pos::StartingPitcher => "SP",
+      Pos::ReliefPitcher => "P",
+      Pos::Bench => "Bench",
     }.to_string()
   }
 }

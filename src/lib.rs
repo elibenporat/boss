@@ -42,7 +42,8 @@ pub mod sports;
 
 
 
-pub (crate) const BASE_URL: &'static str = "http://statsapi.mlb.com/api/v1/";
+pub (crate) const BASE_URL: &'static str = "https://statsapi.mlb.com/api/v1/";
+pub (crate) const BASE_URL_V11: &'static str = "https://statsapi.mlb.com/api/v1.1/";
 
 /// CHUNK_SIZE controls how many files we request from the network at a time. This is to reduce the probability of network timeouts from flooding too many requests at once.
 /// This value will be used in stream_chunked. Only use this if you get a network timeout error.

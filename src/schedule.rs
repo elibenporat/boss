@@ -1,4 +1,4 @@
-//! API Bindings for the MLB Schedule API hosted at http://statsapi.mlb.com/api/v1/schedule
+//! API Bindings for the MLB Schedule API hosted at https://statsapi.mlb.com/api/v1/schedule
 //! All data are subject to MLB Advanced Media copyright
 //! 
 //! The schedule module takes two inputs, a <code>sport_id</code> that indicates the level of play, as well as a data range
@@ -17,6 +17,7 @@ use serde::{Deserialize};
 use std::ops::{Range, RangeInclusive};
 use std::fmt::{Display};
 use crate::utils::*;
+use crate::sports;
 
 #[derive(Deserialize, Debug)]
 #[serde(from = "GameDe")]
@@ -24,30 +25,31 @@ pub struct Game {
     pub game_type: GameType,
     pub game_type_desc: GameTypeDescription,
     pub game_pk: u32,
-    pub game_date_year: u16,
-    pub game_date_month: u8,
-    pub game_date_day: u8,
+    pub game_date: Date,
     pub game_venue_id: u32,
     pub game_url_play_by_play: String,
     pub game_url_boxscore: String,
+    pub game_url_feed_live: String,
 }
 
 impl From <GameDe> for Game {
     fn from (game: GameDe) -> Game {
 
-        let play_by_play_url = format!("{}game/{}/playByPlay", crate::BASE_URL, game.game_pk);
-        let boxscore_url =     format!("{}game/{}/boxscore",   crate::BASE_URL, game.game_pk);
+        let game_url_play_by_play = format!("{}game/{}/playByPlay",  crate::BASE_URL, game.game_pk);
+        let game_url_boxscore =     format!("{}game/{}/boxscore",    crate::BASE_URL, game.game_pk);
+        //This link contains data about the official scorer as well as the primary datacaster. These data go back
+        //to 2008. 
+        let game_url_feed_live =    format!("{}game/{}/feed/live",   crate::BASE_URL_V11, game.game_pk);
 
         Game {
             game_type: game.game_type,
             game_type_desc: game.game_type.into(),
             game_pk: game.game_pk,
-            game_date_year: game.game_date.year,
-            game_date_month: game.game_date.month,
-            game_date_day: game.game_date.day,
+            game_date: game.game_date.into(),
             game_venue_id: game.venue.0,
-            game_url_play_by_play: play_by_play_url,
-            game_url_boxscore: boxscore_url,
+            game_url_play_by_play,
+            game_url_boxscore,
+            game_url_feed_live,
         }
     }
 } 
@@ -65,7 +67,7 @@ impl Schedule {
     
 
     /// Get the entire schedule at the mlb level
-    pub fn get_mlb_years <Y: YearRange> (years: Y) -> Schedule 
+    pub fn get_mlb_year_range <Y: YearRange> (years: Y) -> Schedule 
     where Y:IntoIterator, 
     <Y as IntoIterator>::Item: Display,
     {
@@ -74,7 +76,24 @@ impl Schedule {
         Self::get_years(sport_id, years)
     }
 
-    fn get_years <Y: YearRange> (sport_id: u8, years: Y) -> Schedule 
+    pub fn get_everything_year_range <Y: YearRange> (years: Y) -> Schedule 
+    where Y:IntoIterator, Y:Clone,
+    <Y as IntoIterator>::Item: Display,
+    {
+        //MLB level sport ID
+        let sport_ids = sports::get_all_sport_ids(); 
+        let games: Vec<Game> = sport_ids
+            .into_iter()
+            .map(|sport_id| Self::get_years(sport_id, years.clone()).games)
+            .flatten()
+            .collect()
+            ;
+        Schedule {games}
+    }
+
+
+
+    fn get_years <Y: YearRange> (sport_id: u32, years: Y) -> Schedule 
     where Y:IntoIterator,
     <Y as IntoIterator>::Item: Display,
     {       
@@ -111,13 +130,12 @@ impl YearRange for Range <usize> {}
 impl YearRange for RangeInclusive <usize> {}
 
 pub fn test_schedule() {
-    // let schedule: ScheduleDe = serde_json::from_str(SCHEDULE_JSON).unwrap();
-    // let games: Games = schedule.into();
-    // dbg!(&games[0..10]);
 
-    let sched = Schedule::get_mlb_years(1900 ..= 2020);
-    // dbg!(&sched.games[2000]);
+    let sched = Schedule::get_mlb_year_range(2019 .. 2020);
+    dbg!(&sched.games[2000]);
     dbg!(sched.games.len());
+
+
 }
 
 #[derive(Deserialize, Debug)]
@@ -142,19 +160,7 @@ impl From <ScheduleDe> for Games {
     }
 }
 
-#[derive(Deserialize, Debug)]
-#[serde(from="String")]
-/// We'll build our own date handling rather than bring in an extra depedency. The date maths we need to do are
-/// fairly simple (calculating Batter/Pitcher age) and should help keep our dependency tree as small as possible.
-/// To calculate age, we'll simply do year-year + (month-month)/12 + (day-day)/30. We'll be off by a little on the day side,
-/// but it doesn't really matter if we track a batter as 24.21 years old instead of 24.25 years old.
-/// 
-/// We ignore the time from the gameDate string as we'll get more accurate info from the boxscore, where we want the "Frist Pitch"
-pub (crate) struct GameDate {
-    year: u16,
-    month: u8,
-    day: u8,
-}
+type GameDate = Date;
 
 impl From <String> for GameDate {
     fn from (date_string: String) -> GameDate {
@@ -180,7 +186,7 @@ impl From <String> for GameDate {
 pub (crate) struct GameDe {
     game_type: GameType,
     game_pk: u32,
-    game_date: GameDate,
+    game_date: String,
     venue: VenueID,
 }
 
@@ -196,7 +202,7 @@ impl From<Venue> for VenueID {
 
 
 #[derive(Deserialize, Debug)]
-pub (crate) struct Venue { 
+struct Venue { 
     id: u32,
 }
 
