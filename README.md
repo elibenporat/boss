@@ -51,6 +51,9 @@ BOSS relies on three crates for the bullk of its workload. <br>
 * <b>Isahc</b> handles all of the network requests to grab the JSON files. Isahc's powerful Futures support allowed for easy construction of Asynchronous requests and streams.
 * <b>serde-json</b> combined with <b>SerDe</b> handle all the JSON parsing through declarative deserialization. We simply tell serde-json what structure to expect, point it to a file and the rest is handled magically.
 
+### API Structure
+![API](https://github.com/elibenporat/boss/blob/boss/API.png)
+
 ### Features - Current and Planned
 * Asynchronous out of the box. Player bios are memoized (cached) once they've been downloaded once, drastically reducing the number of network calls and the amount of time waiting on the network.
 * Flattens out all the data and serializes to an easy to use CSV file that can be ported to Tableau or other
