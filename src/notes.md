@@ -22,3 +22,7 @@ For Venues, we can get detailed info such as capacity and dimensions from: https
 To find all the hydrate fields use ?hydrate=hydrations
 
 Awards can be found at: http://statsapi.mlb.com/api/v1/awards ()
+
+
+Japanese data: http://npb.jp/bis/eng/players/
+

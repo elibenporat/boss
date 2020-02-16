@@ -7,6 +7,7 @@
 use isahc::prelude::*;
 use crate::*;
 use std::env;
+use serde::{Serialize, Deserialize};
 
 // use crate::error::*;
 
@@ -16,12 +17,19 @@ use std::env;
 /// but it doesn't really matter if we track a batter as 24.21 years old instead of 24.25 years old.
 /// 
 /// We ignore the time from the gameDate string as we'll get more accurate info from the boxscore, where we want the "Frist Pitch"
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub struct Date {
     pub year: u16,
     pub month: u8,
     pub day: u8,
 }
+
+impl ToString for Date {
+    fn to_string(&self) -> String {
+        format!("{}-{}-{}", self.year, self.month, self.day)
+    }
+}
+
 
 /// Get the difference between two dates in units of years. Does a rough approximation only. This is primarily used for computing
 /// the age of the batter and does not need to be super precise. This saves us from having to import a library to do proper date
@@ -65,7 +73,8 @@ pub fn stream_chunked (urls: Vec<String>) -> Vec<Result<String, std::io::Error>>
 
 
 /// Stream will send out a bunch of requests and collect them as they come in. This is an extremely efficient
-/// method for collecting an arbitrary number of files from the network.
+/// method for collecting an arbitrary number of files from the network. If there is a risk that too many requests
+/// will cause a time_out, use stream_chunked instead
 pub fn stream (urls: Vec<String>) -> Vec<Result<String, std::io::Error>> {
    
     let resp_stream = futures::stream::FuturesUnordered::new();

@@ -253,9 +253,9 @@ fn default_xref_ids() -> Vec<XRefID> {
         vec![]
 }
 
-#[serde(field_identifier)]
-#[derive(Deserialize, Debug, Copy, Clone)]
-enum TimeZone {
+// #[serde(field_identifier)]
+#[derive(Deserialize, Serialize, Debug, Copy, Clone)]
+pub (crate) enum TimeZone {
     /// ### GMT -10
     /// * Pacific/Honolulu
     #[serde(alias="Pacific/Honolulu")]
@@ -341,15 +341,15 @@ enum TimeZone {
     EUROPE
 }
 
-#[derive(Deserialize, Debug)]
-enum SurfaceType {
+#[derive(Deserialize, Serialize, Debug)]
+pub (crate) enum SurfaceType {
     Artificial,
     Grass,
     Indoor,
 }
 
-#[derive(Deserialize, Debug)]
-enum RoofType {
+#[derive(Deserialize, Serialize, Debug)]
+pub (crate) enum RoofType {
     Dome,
     Open,
     Retractable,

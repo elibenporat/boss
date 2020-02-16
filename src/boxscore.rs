@@ -7,7 +7,7 @@
 /// 
 
 
-use serde::{Deserialize};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use regex::Regex;
 
@@ -40,44 +40,45 @@ pub fn test_boxscore () {
 
 #[derive(Deserialize, Debug)]
 #[serde(from="BoxScoreDe")]
-pub struct BoxScore {
-  attendance: Option<u32>,
-  first_pitch: Option<f32>,
-  game_weather_temp_f: Option<u8>,
-  game_weather_temp_c: Option<i8>,
-  game_weather_condition: Option<WeatherCondition>,
-  game_wind_speed_mph: Option<u8>,
-  game_wind_direction: Option<WindDirection>,
+pub (crate) struct BoxScore {
+  pub (crate) attendance: Option<u32>,
+  pub (crate) first_pitch: Option<f32>,
+  pub (crate) game_weather_temp_f: Option<u8>,
+  pub (crate) game_weather_temp_c: Option<i8>,
+  pub (crate) game_weather_condition: Option<WeatherCondition>,
+  pub (crate) game_wind_speed_mph: Option<u8>,
+  pub (crate) game_wind_direction: Option<WindDirection>,
   
-  home_team_id: u32,
-  away_team_id: u32,
-  home_league_id: u32,
-  away_league_id: u32,
-  home_sport_id: u32,
-  away_sport_id: u32,
-  home_parent_team_id: u32,
-  away_parent_team_id: u32,
+  pub (crate) home_team_id: u32,
+  pub (crate) away_team_id: u32,
+  pub (crate) home_league_id: u32,
+  pub (crate) away_league_id: u32,
+  pub (crate) home_sport_id: u32,
+  pub (crate) away_sport_id: u32,
+  pub (crate) home_parent_team_id: u32,
+  pub (crate) away_parent_team_id: u32,
   
-  hp_umpire_id: Option<u32>,
+  pub (crate) hp_umpire_id: Option<u32>,
 
-  home_players: Vec<Player>,
-  away_players: Vec<Player>,
+  pub (crate) home_players: Vec<Player>,
+  pub (crate) away_players: Vec<Player>,
 
-  home_defense: Defense,
-  away_defense: Defense,
+  pub (crate) home_defense: Defense,
+  pub (crate) away_defense: Defense,
+
 
 }
 
-#[derive(Debug)]
-struct Defense {
-  catcher: Option<u32>,
-  first_base: Option<u32>,
-  second_base: Option<u32>,
-  short_stop: Option<u32>,
-  third_base: Option<u32>,
-  left_field: Option<u32>,
-  right_field: Option<u32>,
-  center_field: Option<u32>,
+#[derive(Debug, Copy, Clone)]
+pub (crate) struct Defense {
+  pub (crate) catcher: Option<u32>,
+  pub (crate) first_base: Option<u32>,
+  pub (crate) second_base: Option<u32>,
+  pub (crate) short_stop: Option<u32>,
+  pub (crate) third_base: Option<u32>,
+  pub (crate) left_field: Option<u32>,
+  pub (crate) right_field: Option<u32>,
+  pub (crate) center_field: Option<u32>,
 }
 
 impl From <Vec<Player>> for Defense {
@@ -206,8 +207,8 @@ impl From <BoxScoreDe> for BoxScore {
   }
 }
 
-#[derive(Debug)]
-enum WeatherCondition {
+#[derive(Debug, Deserialize, Serialize)]
+pub (crate) enum WeatherCondition {
   Clear,
   Cloudy,
   Dome,
@@ -220,8 +221,8 @@ enum WeatherCondition {
   Sunny,
 }
 
-#[derive(Debug)]
-enum WindDirection {
+#[derive(Debug, Deserialize, Serialize)]
+pub (crate) enum WindDirection {
   Calm,
   InFromCF,
   InFromLF,
@@ -337,10 +338,10 @@ struct PlayerID {
 
 #[serde(from = "PlayerID")]
 #[derive(Deserialize, Debug, Copy, Clone)]
-struct Player {
-  id: u32,
-  position: Pos,
-  batting_order: Option<u8>,
+pub(crate) struct Player {
+  pub(crate) id: u32,
+  pub(crate) position: Pos,
+  pub(crate) batting_order: Option<u8>,
 }
 
 impl From<PlayerID> for Player {
@@ -416,8 +417,8 @@ struct Position {
   abbreviation: Pos,
 }
 
-#[derive(Deserialize, Debug, Hash, Eq, PartialEq, Copy, Clone)]
-enum Pos {
+#[derive(Deserialize, Serialize, Debug, Hash, Eq, PartialEq, Copy, Clone)]
+pub (crate) enum Pos {
   #[serde(rename="C")]
   Catcher,
   #[serde(rename="1B")]

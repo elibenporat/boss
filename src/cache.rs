@@ -24,12 +24,14 @@
 use crate::utils;
 use crate::player_changes;
 use crate::venues;
+use crate::schedule;
 use serde::{Serialize};
 use serde::de::DeserializeOwned;
 
 
 const PLAYER_CHANGES_JSON: &str = "\\player_changes.json";
 const VENUE_X_Y_JSON: &str = "\\venue_xy.json";
+const SCHEDULE_JSON: &str = "\\schedule.json";
 
 fn cache_folder () -> String {
     format!("{}{}", utils::get_directory(), "\\cache" )
@@ -56,10 +58,25 @@ where T: DeserializeOwned
     create_folder(folder);
     
     let json = std::fs::read_to_string(file_name).unwrap_or("".to_string());
-    
+
     serde_json::from_str(&json).unwrap_or(vec![])
+    
 
 }
+
+
+
+///Serialize the schedule data
+pub (crate) fn cache_schedule (games: Vec<schedule::GameMetaData>) {
+    
+    cache (SCHEDULE_JSON, games);
+    
+}
+
+///Load the chedule data
+pub (crate) fn load_schedule () -> Vec<schedule::GameMetaData> {
+    load (SCHEDULE_JSON)
+} 
 
 /// Serialize the venue (x,y) coordinates 
 pub (crate) fn cache_venue_x_y (venues: Vec<venues::VenueXY>) {

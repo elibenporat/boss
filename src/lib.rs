@@ -30,7 +30,7 @@
 // Look at this and add as prior art : https://github.com/toddrob99/MLB-StatsAPI/blob/master/statsapi/endpoints.py
 
 
-pub mod play_by_play;
+// pub mod play_by_play;
 pub mod schedule;
 pub mod utils;
 pub mod boxscore;
@@ -39,8 +39,9 @@ pub mod venues;
 pub mod error;
 pub mod cache;
 pub mod sports;
-
-
+pub mod feed_live;
+pub mod coaches;
+// pub mod game;
 
 pub (crate) const BASE_URL: &'static str = "https://statsapi.mlb.com/api/v1/";
 pub (crate) const BASE_URL_V11: &'static str = "https://statsapi.mlb.com/api/v1.1/";

@@ -20,29 +20,27 @@
 
 // use isahc::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::time::{Instant};
-
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all="camelCase")]
-struct Game {
-    all_plays: Vec<AllPlays>,
+pub (crate) struct Game {
+  pub (crate) all_plays: Vec<AllPlays>,
 }
 
 #[derive(Debug, Deserialize)]
-struct AllPlays {
-    result: PlateAppearanceData,
-    about: About,
-    matchup: MatchupData,
-    runners: Vec<RunnerData>,
-    //contains pitches, subs, pickoffs, etc.
-    #[serde(rename="playEvents")]
-    play_events: Vec<PlayEvent>,
+pub (crate) struct AllPlays {
+  pub (crate) result: PlateAppearanceData,
+  pub (crate) about: About,
+  pub (crate) matchup: MatchupData,
+  pub (crate) runners: Vec<RunnerData>,
+  //contains pitches, subs, pickoffs, etc.
+  #[serde(rename="playEvents")]
+  pub (crate) play_events: Vec<PlayEvent>,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all="camelCase")]
-enum PlayEventType  {
+pub (crate) enum PlayEventType  {
     Action,
     Pitch,
     Pickoff,
@@ -50,70 +48,70 @@ enum PlayEventType  {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all="camelCase")]
-struct PitchDataParse {
-    strike_zone_top: f32,
-    strike_zone_bottom: f32,
-    coordinates: PitchCoordinates,
-    start_speed: Option<f32>,
-    end_speed: Option<f32>,
-    breaks: Option<PitchBreaks>,
-    plate_time: Option<f32>,
-    extension: Option<f32>,
+pub (crate) struct PitchDataParse {
+    pub (crate) strike_zone_top: f32,
+    pub (crate) strike_zone_bottom: f32,
+    pub (crate) coordinates: PitchCoordinates,
+    pub (crate) start_speed: Option<f32>,
+    pub (crate) end_speed: Option<f32>,
+    pub (crate) breaks: Option<PitchBreaks>,
+    pub (crate) plate_time: Option<f32>,
+    pub (crate) extension: Option<f32>,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all="camelCase")]
-struct PitchBreaks {
-    break_length: f32,
-    break_y: f32,
-    spin_rate: f32,
-    spin_direction: f32,
+pub (crate) struct PitchBreaks {
+    pub (crate) break_length: f32,
+    pub (crate) break_y: f32,
+    pub (crate) spin_rate: f32,
+    pub (crate) spin_direction: f32,
 }
 
 #[serde(rename_all="camelCase")]
 #[derive(Debug, Deserialize)]
-struct PitchCoordinates {
+pub (crate) struct PitchCoordinates {
     // x,y are the pixel coordinates on the screen. Mildly useful for minor league strike zone data
-    x: f32,
-    y: f32,
+    pub (crate) x: f32,
+    pub (crate) y: f32,
     // The rest of the fields relate to Pitch/Fx or StatCast data
-    a_x: Option<f32>,
-    a_y: Option<f32>,
-    a_z: Option<f32>,
-    pfx_x: Option<f32>,
-    pfx_z: Option<f32>,
-    p_x: Option<f32>,
-    p_z: Option<f32>,
-    v_x0: Option<f32>,
-    v_y0: Option<f32>,
-    v_z0: Option<f32>,
-    x0: Option<f32>,
-    y0: Option<f32>,
-    z0: Option<f32>,
+    pub (crate) a_x: Option<f32>,
+    pub (crate) a_y: Option<f32>,
+    pub (crate) a_z: Option<f32>,
+    pub (crate) pfx_x: Option<f32>,
+    pub (crate) pfx_z: Option<f32>,
+    pub (crate) p_x: Option<f32>,
+    pub (crate) p_z: Option<f32>,
+    pub (crate) v_x0: Option<f32>,
+    pub (crate) v_y0: Option<f32>,
+    pub (crate) v_z0: Option<f32>,
+    pub (crate) x0: Option<f32>,
+    pub (crate) y0: Option<f32>,
+    pub (crate) z0: Option<f32>,
 
 }
 
 #[derive(Debug, Deserialize)]
-struct HitCoordinates {
+pub (crate) struct HitCoordinates {
     #[serde(alias="coordX")]
-    x: f32,
+    pub (crate) x: f32,
     #[serde(alias="coordY")]
-    y: f32,
+    pub (crate) y: f32,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all="camelCase")]
-struct HitData {
-    trajectory: Trajectory,
-    hardness: Hardness,
-    coordinates: HitCoordinates,
-    launch_speed: Option<f32>,
-    launch_angle: Option<f32>,
-    total_distance: Option<f32>,
+pub (crate) struct HitData {
+    pub (crate) trajectory: Trajectory,
+    pub (crate) hardness: Hardness,
+    pub (crate) coordinates: HitCoordinates,
+    pub (crate) launch_speed: Option<f32>,
+    pub (crate) launch_angle: Option<f32>,
+    pub (crate) total_distance: Option<f32>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub(crate) enum Trajectory {
+pub (crate) enum Trajectory {
     #[serde(alias = "line_drive", alias = "bunt_line_drive")]
     LineDrive,
     #[serde(alias = "fly_ball")]
@@ -126,7 +124,7 @@ pub(crate) enum Trajectory {
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all="camelCase")]
-pub(crate) enum Hardness {
+pub (crate) enum Hardness {
     Soft,
     Medium,
     Hard,
@@ -135,8 +133,8 @@ pub(crate) enum Hardness {
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all="camelCase")]
 pub (crate) struct PitchType {
-    code: PitchTypeCode,
-    description: PitchTypeDescription,
+  pub (crate) code: PitchTypeCode,
+  pub (crate) description: PitchTypeDescription,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -199,31 +197,50 @@ pub (crate) enum PitchTypeDescription {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all="camelCase")]
 pub (crate) struct PlayEvent {
-    details: PlayEventDetails,
-    is_pitch: bool,
+    pub (crate) details: PlayEventDetails,
+    pub (crate) is_pitch: bool,
     #[serde(rename="type")]
-    play_event_type: PlayEventType,
-    pitch_data: Option<PitchDataParse>,
-    hit_data: Option<HitData>,
+    pub (crate) play_event_type: PlayEventType,
+    pub (crate) pitch_data: Option<PitchDataParse>,
+    pub (crate) hit_data: Option<HitData>,
+}
+
+#[derive(Debug, Deserialize)]
+pub (crate) enum Code {
+  /// Ball
+  B,
+  /// Called Strike
+  C,
+  /// Hit Into Play (no outs)
+  D,
+  /// Hit Into Play (runs)
+  E,
+  /// Foul Ball
+  F,
+  /// Strike Swinging
+  S,
+  /// In Play - Outs
+  X,
+
 }
 
 // We ignore the "count" as we'll be computing the state manually
 #[derive(Debug, Deserialize)]
 #[serde(rename_all="camelCase")]
 pub (crate) struct PlayEventDetails {
-    event: Option<Event>,
-    event_type: Option<EventType>,
-    has_review: bool,
-    is_in_play: Option<bool>,
-    #[serde(rename="type")]
-    pitch_type: Option<PitchType>,
+  pub (crate) event: Option<Event>,
+  pub (crate) event_type: Option<EventType>,
+  pub (crate) has_review: bool,
+  pub (crate) is_in_play: Option<bool>,
+  #[serde(rename="type")]
+  pub (crate) pitch_type: Option<PitchType>,
 }
 
 ///Result captures plate appearance level details. We ignore the "rbi", "awayscore" and "homescore" fields, as we'll be manually tracking game state,
 ///including RE24/288, Win Probability and other metadata such as previous pitch. We are ignoring the plate appearance description for performance reasons. 
 /// All the relevant data are captured in other data fields.
 #[derive(Debug, Deserialize)]
-struct PlateAppearanceData {
+pub(crate) struct PlateAppearanceData {
     #[serde(rename="type")]
     result_type: ResultType,
     #[serde(rename="event")]
@@ -234,7 +251,7 @@ struct PlateAppearanceData {
     // plate_appearance_result_description: String,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Copy, Clone)]
 #[serde(rename_all="camelCase")]
 pub(crate) enum HalfInning {
     Top,
@@ -242,78 +259,78 @@ pub(crate) enum HalfInning {
 }
 
 #[derive(Debug, Deserialize)]
-struct About {
+pub(crate) struct About {
     #[serde(rename="atBatIndex")]
     // The record for plate appearances in an extra inning game is 12, since 12x18 is less than u8::max(), we can safely use a u8 here
-    plate_appearance_index: u8,
+    pub (crate) plate_appearance_index: u8,
     #[serde(rename="halfInning")]
-    half_inning: HalfInning,
+    pub (crate) half_inning: HalfInning,
     #[serde(rename="inning")]
-    inning_num: u8
+    pub (crate) inning_num: u8
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(field_identifier, rename_all="camelCase")]
-enum ResultType {
+pub (crate) enum ResultType {
     AtBat,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all="camelCase")]
-struct Matchup {
-    batter : Player,
-    pitcher: Player,
-    bat_side: Side,
-    pitch_hand: Side,
+pub(crate) struct Matchup {
+    pub(crate) batter: Player,
+    pub(crate) pitcher: Player,
+    pub(crate) bat_side: Side,
+    pub(crate) pitch_hand: Side,
 }
 
 #[derive(Debug, Deserialize)]
-struct Player {
+pub (crate) struct Player {
     id: u32,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Copy, Clone)]
 pub(crate) struct Side {
     code: SideCode,
     description: SideDescription,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-enum SideCode {
+#[derive(Debug, Deserialize, Serialize, Copy, Clone)]
+pub(crate) enum SideCode {
     L,
     R,
     S,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-enum SideDescription {
+#[derive(Debug, Deserialize, Serialize, Copy, Clone)]
+pub(crate) enum SideDescription {
     Left,
     Right,
     Switch,
 }
 
 #[derive(Debug, Deserialize)]
-struct Runner {
+pub(crate) struct Runner {
     movement: RunnerMovement,
     details: RunnerDetails
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(from = "Base")]
-struct BaseValue {
+pub(crate) struct BaseValue {
     value: u8,
     runs: u8,
 }
 
 #[derive(Debug, Deserialize)]
-struct RunnerMovement {
+pub(crate) struct RunnerMovement {
     start: BaseValue,
     end: BaseValue,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all="camelCase")]
-struct RunnerDetails {
+pub(crate) struct RunnerDetails {
     runner: Player,
     event: Event,
     event_type: EventType,
@@ -355,7 +372,7 @@ impl From<Base> for BaseValue {
 /// to base values.
 #[derive(Debug, Deserialize)]
 #[serde(from="Runner")]
-struct RunnerData {
+pub (crate) struct RunnerData {
     runner_id: u32,
     start_base_value: u8,
     end_base_value: u8,
@@ -366,15 +383,16 @@ struct RunnerData {
     earned: bool,
 }
 
+//TODO We can remove this from and do it at a later stage. TBD
 #[derive(Debug, Deserialize)]
 #[serde(from="Matchup")]
-struct MatchupData {
-    batter_id: u32,
-    batter_bat_side_code: SideCode,
-    batter_bat_side_desc: SideDescription,
-    pitcher_id: u32,
-    pitcher_pitch_hand_code: SideCode,
-    pitcher_pitch_hand_desc: SideDescription,
+pub (crate) struct MatchupData {
+  pub (crate) batter_id: u32,
+  pub (crate) batter_bat_side_code: SideCode,
+  pub (crate) batter_bat_side_desc: SideDescription,
+  pub (crate) pitcher_id: u32,
+  pub (crate) pitcher_pitch_hand_code: SideCode,
+  pub (crate) pitcher_pitch_hand_desc: SideDescription,
 }
 
 /// Flatten the runner data out into a more efficient and readable structe without all the nesting. 
@@ -418,7 +436,7 @@ impl From <Matchup> for MatchupData {
 #[allow(non_camel_case_types)]
 #[derive(Debug, Deserialize)]
 #[serde(field_identifier)]
-enum EventType {
+pub (crate) enum EventType {
   balk,
   fan_interference,
   other_advance,
@@ -480,7 +498,7 @@ enum EventType {
 /// background. TODO: use this for both the "event" and "eventType" fields to see where there are differences
 #[derive(Debug, Deserialize)]
 #[serde(field_identifier)]
-enum Event {
+pub (crate) enum Event {
     #[serde(alias = "Game Advisory")]
     GameAdvisory,
     #[serde(alias = "Ejection")]
@@ -562,7 +580,7 @@ enum Event {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all="camelCase")]
-struct PlateAppearance {
+pub (crate) struct PlateAppearance {
     #[serde(rename="type")]
     result_type: ResultType,
     event: Event,
@@ -570,7 +588,7 @@ struct PlateAppearance {
 }
 
 
-pub fn parse_test_data () {
+pub (crate) fn parse_game () -> Game {
 
     // let mut test_vec: Vec<Game> = Vec::with_capacity(10_000);
     
@@ -579,21 +597,23 @@ pub fn parse_test_data () {
     //     test_vec.push(test_parse);
     // }
 
-    let time_started = Instant::now();
+    let test: Game = serde_json::from_str(MLB_DATA).unwrap();
 
-    for _ in 0 .. 10_000 {
-      let _test: Game = serde_json::from_str(MLB_DATA).unwrap();
-    }
+    test
 
-    println! ("10,000 Took: {} seconds", time_started.elapsed().as_secs());
+    // for _ in 0 .. 10_000 {
+    //   let _test: Game = serde_json::from_str(MLB_DATA).unwrap();
+    // }
 
-    let time_started = Instant::now();
+    // println! ("10,000 Took: {} seconds", time_started.elapsed().as_secs());
 
-    for _ in 0 .. 100_000 {
-      let _test: Game = serde_json::from_str(MLB_DATA).unwrap();
-    }
+    // let time_started = Instant::now();
 
-    println! ("100,000 Took: {} seconds", time_started.elapsed().as_secs());
+    // for _ in 0 .. 100_000 {
+    //   let _test: Game = serde_json::from_str(MLB_DATA).unwrap();
+    // }
+
+    // println! ("100,000 Took: {} seconds", time_started.elapsed().as_secs());
     
    
     

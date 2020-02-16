@@ -58,9 +58,17 @@ BOSS relies on three crates for the bullk of its workload. <br>
 * Would love to build a Rust wrapper for the Tableay Hyper API, but don't how to do that... yet.
 
 
+### Contributing
+
+Contributions are certainly welcome once the basics are complete. I have never merged a pull request before, so you'll have to show me how :).
+
 ### Roadmap
 
-* Legacy tools to gather data from the deprecated gameday xml files
-* Complete rust bindings to the mlb.com stats api
-* Incorporate the Rust retrosheet parser and try to align the data to theStatCast data set. Hopefully we will be able to use the existing code base We're capturing the xref_ids so this should be possible.
-* Export flattened (denormalized) games to CSV (Ideally, there should be an option to split out into 2 files, one for metadata, one for play-by-play, rather than just one big flat file)
+* 0.1: Working library that exports a vector of pitches to CSV and Bincode
+* 0.2: Error handling
+* 0.3: Gameday XML data pull for extra data
+* 0.4: Substitutions, RE288, Venue MetaData
+* 0.5: Retrosheet integration
+* 0.6: Fangraphs integration
+* 0.7: Japanese/Korean stats
+* 0.8: NCAA stats
