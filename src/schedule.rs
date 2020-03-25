@@ -1,11 +1,13 @@
 //! API Bindings for the MLB Schedule API hosted at https://statsapi.mlb.com/api/v1/schedule
 //! All data are subject to MLB Advanced Media copyright
 //! 
-//! The schedule module takes two inputs, a <code>sport_id</code> that indicates the level of play, as well as a data range
-//! in mm/dd//yyyy format (start and end). SportIDs are one of [1, 11, 12, 13, 14, 15, 16, 17]
+//! The schedule module takes two inputs, a <code>sport_id</code> that indicates the level of play, as well as a date range
+//! in mm/dd//yyyy format (start and end). SportIDs are one of [1, 11, 12, 13, 14, 15, 16, 17] etc.
 //!  
 //! The schedule is the starting point for gathering play by play data since it gives us a comprehensive list of all the games available to us.
-//! A number of convenience functions are provided by this module to allow for easy extraction of the set of games you are looking for.
+//! To use the schedule efficiently, you need to load the "cached" schedules, ie all the schedule data that you've already downloaded. This will
+//! keep track of seasons where we have some games that are not "Final". This allows us to only update seasons that are in progress, but also make sure we
+//! pick up any missing seasons.
 //!
 //! Important "Hydrations" include:
 //! * gameInfo (has attendance and first pitch)
@@ -50,7 +52,9 @@ pub fn test_schedule() {
         .collect()
         ;
    
-    let years: Vec<u16> = (2018 .. 2019).into_iter().collect();
+
+    let years = YearRange::from_range_inc(2005 ..= 2020);
+
     let sport_ids = sports::get_all_sport_ids();
 
     let sched = Schedule::get_data(years, sport_ids, &season_sports);
@@ -66,17 +70,16 @@ pub fn test_schedule() {
 
     serialze_schedule.extend(games);
 
-    dbg!(&serialze_schedule[10]);
     dbg!(&serialze_schedule.len());
-    cache_schedule(serialze_schedule);
-
-     
+    cache_schedule(&serialze_schedule);
     
     dbg!(start_time.elapsed().as_secs());
 
 }
 
-type SeasonSportStatus = BTreeSet<(u16, u32, AbstractGameState)>;
+
+
+pub type SeasonSportStatus = BTreeSet<(u16, u32, AbstractGameState)>;
 pub type SeasonSportCache = BTreeMap<(u16, u32), SeasonStatus>;
 
 
@@ -247,13 +250,18 @@ struct ScheduleWithContext {
     sport_id: u32,
 }
 
-/// Use either an exclusive range such as 2012 .. 2015 or an inclusive range such as 2012 ..= 2014. YearRange is 
-/// Trait-bound to the Range and RangeInclusive structs.
-pub trait YearRange {}
+/// Use either an exclusive range such as 2012 .. 2015 with YearRange::from_range or an 
+/// inclusive range such as 2012 ..= 2014 with YearRange::from_range.
+pub struct YearRange;
 
-impl YearRange for Range <usize> {}
-impl YearRange for RangeInclusive <usize> {}
-
+impl YearRange {
+    pub fn from_range_inc(range: RangeInclusive<u16>) -> Vec<u16> {
+        (*range.start() ..= *range.end()).into_iter().collect()
+    }
+    pub fn from_range(range: Range<u16>) -> Vec<u16> {
+        (range.start .. range.end).into_iter().collect()
+    }
+}
 
 #[derive(Deserialize, Debug)]
 struct ScheduleDe {
@@ -325,7 +333,7 @@ pub (crate) struct GameDe {
     status: GameStatus,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Copy, Clone)]
 #[serde(rename_all="camelCase")]
 struct GameStatus {
     abstract_game_state: AbstractGameState,
@@ -401,7 +409,7 @@ pub enum GameType {
     P,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, Copy)]
 pub enum GameTypeDescription {
     RegularSeason,
     FirstRound,

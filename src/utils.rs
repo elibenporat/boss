@@ -7,6 +7,7 @@
 use isahc::prelude::*;
 use crate::*;
 use std::env;
+// use std::time;
 use serde::{Serialize, Deserialize};
 
 // use crate::error::*;
@@ -78,6 +79,7 @@ pub fn stream_chunked (urls: Vec<String>) -> Vec<Result<String, std::io::Error>>
 pub fn stream (urls: Vec<String>) -> Vec<Result<String, std::io::Error>> {
    
     let resp_stream = futures::stream::FuturesUnordered::new();
+    
     for url in urls {
         resp_stream.push (
             async {

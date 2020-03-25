@@ -30,25 +30,28 @@
 // Look at this and add as prior art : https://github.com/toddrob99/MLB-StatsAPI/blob/master/statsapi/endpoints.py
 
 
-// pub mod play_by_play;
-pub mod schedule;
-pub mod utils;
 pub mod boxscore;
-pub mod player_changes;
-pub mod venues;
-pub mod error;
 pub mod cache;
-pub mod sports;
-pub mod feed_live;
 pub mod coaches;
-// pub mod game;
+// pub mod error;
+pub mod feed_live;
+pub mod game;
+pub mod get_data;
+pub mod metadata;
+pub mod play_by_play;
+pub mod players;
+pub mod schedule;
+pub mod sports;
+pub mod team;
+pub mod utils;
+pub mod venues;
 
 pub (crate) const BASE_URL: &'static str = "https://statsapi.mlb.com/api/v1/";
 pub (crate) const BASE_URL_V11: &'static str = "https://statsapi.mlb.com/api/v1.1/";
 
 /// CHUNK_SIZE controls how many files we request from the network at a time. This is to reduce the probability of network timeouts from flooding too many requests at once.
 /// This value will be used in stream_chunked. Only use this if you get a network timeout error.
-pub const CHUNK_SIZE: usize = 30;
+pub const CHUNK_SIZE: usize = 5;
 
 /// Base "x" value for pixel coordinates tracked in the hitData field. This is the default value for all fields, as per the SVG files
 /// If we don't have an svg file for a particular venue_id - we'll fill in the x value with this constant
@@ -58,3 +61,7 @@ pub const STADIUM_X: f32 = 125.2;
 /// If we don't have an svg file for a particular venue_id - we'll fill in the y value with this constant
 #[allow(unused)]
 pub const STADIUM_Y: f32 = 203.5;
+
+///Default number for converting pixels into feet. We'll update this variable after we analyze the data some more.
+#[allow(unused)]
+pub const FEET_PER_PIXEL: f32 = 2.75;

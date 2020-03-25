@@ -2,7 +2,7 @@
 //! 
 
 
-use serde::{Deserialize};
+use serde::{Deserialize, Serialize};
 
 pub fn test_coaches() {
 
@@ -17,32 +17,38 @@ pub (crate) fn get_coaches (coach_data: String) -> Coaches {
     
 }
 
-#[derive(Deserialize, Debug)]
-#[serde(from="Roster")]
-pub (crate) struct Coaches {
-    pub (crate) batting_coach: Option<u32>,
-    pub (crate) pitching_coach: Option<u32>,
-    pub (crate) manager: Option<u32>,
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct CoachData {
+  pub game_pk: u32,
+  pub home_coaches: Coaches,
+  pub away_coaches: Coaches,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct Coaches {
+    pub batting_coach: Option<u32>,
+    pub pitching_coach: Option<u32>,
+    pub manager: Option<u32>,
 }
 
 #[derive(Deserialize, Debug)]
-struct Roster {
-    roster: Vec<Coach>,
+pub(crate) struct Roster {
+    pub (crate) roster: Vec<Coach>,
 }
 
 #[derive(Deserialize, Debug)]
-struct Coach {
-    person: Person,
-    job: String,
-    #[serde(rename="jobId")]
-    job_id: String,
+pub(crate) struct Coach {
+  pub(crate) person: Person,
+  pub(crate) job: String,
+  #[serde(rename="jobId")]
+  pub(crate)job_id: String,
 }
 
 #[derive(Deserialize, Debug)]
-struct Person {
-    id: u32,
-    #[serde(rename="fullName")]
-    full_name: String,
+pub(crate) struct Person {
+  pub(crate) id: u32,
+  #[serde(rename="fullName")]
+  pub(crate) full_name: String,
 }
 
 impl From <Roster> for Coaches {

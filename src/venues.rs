@@ -51,11 +51,11 @@ pub fn test_venues () {
 
     venues_x_y.extend(venues_x_y_new);
     
-    cache::cache_venue_x_y(venues_x_y);
+    cache::cache_venue_x_y(&venues_x_y);
 
 }
 
-fn get_svg (id: u32) -> (Option<f32>, Option<f32>) {
+pub fn get_svg (id: u32) -> (Option<f32>, Option<f32>) {
 
     let link = format!("http://mlb.mlb.com/images/gameday/fields/svg/{}.svg", id);
     let svg_data = isahc::get(link).unwrap().text().unwrap();
@@ -110,17 +110,17 @@ fn get_svg (id: u32) -> (Option<f32>, Option<f32>) {
 
 // }
 
-#[derive(Deserialize, Serialize, Debug)]
-pub (crate) struct VenueXY {
-    id: u32,
-    x: Option<f32>,
-    y: Option<f32>,
+#[derive(Deserialize, Serialize, Debug, Copy, Clone)]
+pub struct VenueXY {
+    pub id: u32,
+    pub x: Option<f32>,
+    pub y: Option<f32>,
 }
 
 
 #[derive(Deserialize, Debug)]
-pub struct Venues {
-    venues: Vec<Venue>,
+pub (crate) struct Venues {
+    pub (crate) venues: Vec<VenueDe>,
 }
 
 impl From<VenueDe> for Venue {
@@ -133,6 +133,12 @@ impl From<VenueDe> for Venue {
                     .nth(0)
                     .unwrap_or("".to_string())
                     ;
+        
+        let (venue_latitude, venue_longitude) = match v.location.default_coordinates {
+            Some (loc) => (Some(loc.latitude), Some(loc.longitude)),
+            _ => (None, None)
+        };
+        
         Venue {
             id: v.id,
             venue_name: v.name,
@@ -152,6 +158,8 @@ impl From<VenueDe> for Venue {
             venue_right_center: v.field_info.right_center,
             venue_right_line: v.field_info.right_line,
             venue_right: v.field_info.right,
+            venue_latitude,
+            venue_longitude,
         }
     }
 }
@@ -172,81 +180,88 @@ impl From<TimeZone> for i8 {
     }
 }
 
-#[derive(Deserialize, Debug)]
-#[serde(from="VenueDe")]
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct VenueData {
+    pub year: u16,
+    pub venue: Venue,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Venue {
-    id: u32,
-    venue_name: String,
-    venue_city: String,
-    venue_state: String,
-    venue_state_abbr: String,
-    venue_time_zone: TimeZone,
-    venue_time_zone_offset: i8,
-    venue_capacity: Option<u32>,
-    venue_surface: Option<SurfaceType>,
-    venue_roof: Option<RoofType>,
-    venue_left_line: Option<u16>,
-    venue_left: Option<u16>,
-    venue_left_center: Option<u16>,
-    venue_center: Option<u16>,
-    venue_right_center: Option<u16>,
-    venue_right: Option<u16>,
-    venue_right_line: Option<u16>,
-    venue_retrosheet_id: String,
+    pub id: u32,
+    pub venue_name: String,
+    pub venue_city: String,
+    pub venue_state: String,
+    pub venue_state_abbr: String,
+    pub venue_time_zone: TimeZone,
+    pub venue_time_zone_offset: i8,
+    pub venue_capacity: Option<u32>,
+    pub venue_surface: Option<SurfaceType>,
+    pub venue_roof: Option<RoofType>,
+    pub venue_left_line: Option<u16>,
+    pub venue_left: Option<u16>,
+    pub venue_left_center: Option<u16>,
+    pub venue_center: Option<u16>,
+    pub venue_right_center: Option<u16>,
+    pub venue_right: Option<u16>,
+    pub venue_right_line: Option<u16>,
+    pub venue_retrosheet_id: String,
+    pub venue_latitude: Option<f32>,
+    pub venue_longitude: Option<f32>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all="camelCase")]
-struct VenueDe {
-    id: u32,
-    name: String,
-    location: Location,
-    time_zone: TimeZoneData,
-    field_info: FieldInfo,
+pub(crate) struct VenueDe {
+    pub(crate) id: u32,
+    pub(crate) name: String,
+    pub(crate) location: Location,
+    pub(crate) time_zone: TimeZoneData,
+    pub(crate) field_info: FieldInfo,
     #[serde(default="default_xref_ids")]
-    xref_ids: Vec<XRefID>,
+    pub(crate) xref_ids: Vec<XRefID>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all="camelCase")]
-struct Location {
-    city: String,
-    state: Option<String>,
-    state_abbrev: Option<String>,
-    default_coordinates: Option<Coords>,
+pub(crate) struct Location {
+    pub(crate) city: String,
+    pub(crate) state: Option<String>,
+    pub(crate) state_abbrev: Option<String>,
+    pub(crate) default_coordinates: Option<Coords>,
 }
 
-#[derive(Deserialize, Debug)]
-struct Coords {
-    latitude: f32,
-    longitude: f32,
+#[derive(Deserialize, Debug, Clone)]
+pub (crate) struct Coords {
+    pub(crate) latitude: f32,
+    pub(crate) longitude: f32,
 }
 
-#[derive(Deserialize, Debug)]
-struct TimeZoneData {
-    id: TimeZone,
-}
-
-#[serde(rename_all="camelCase")]
-#[derive(Deserialize, Debug)]
-struct FieldInfo {
-    capacity: Option<u32>,
-    turf_type: Option<SurfaceType>,
-    roof_type: Option<RoofType>,
-    left_line: Option<u16>,
-    left: Option<u16>,
-    left_center: Option<u16>,
-    center: Option<u16>,
-    right_center: Option<u16>,
-    right: Option<u16>,
-    right_line: Option<u16>,
+#[derive(Deserialize, Debug, Clone)]
+pub(crate) struct TimeZoneData {
+    pub(crate) id: TimeZone,
 }
 
 #[serde(rename_all="camelCase")]
-#[derive(Deserialize, Debug)]
-struct XRefID {
-    xref_id: Option<String>,
-    xref_type: Option<String>,
+#[derive(Deserialize, Debug, Clone)]
+pub(crate) struct FieldInfo {
+    pub(crate) capacity: Option<u32>,
+    pub(crate) turf_type: Option<SurfaceType>,
+    pub(crate) roof_type: Option<RoofType>,
+    pub(crate) left_line: Option<u16>,
+    pub(crate) left: Option<u16>,
+    pub(crate) left_center: Option<u16>,
+    pub(crate) center: Option<u16>,
+    pub(crate) right_center: Option<u16>,
+    pub(crate) right: Option<u16>,
+    pub(crate) right_line: Option<u16>,
+}
+
+#[serde(rename_all="camelCase")]
+#[derive(Deserialize, Debug, Clone)]
+pub(crate) struct XRefID {
+    pub(crate) xref_id: Option<String>,
+    pub(crate) xref_type: Option<String>,
 }
 
 fn default_xref_ids() -> Vec<XRefID> {
@@ -255,7 +270,7 @@ fn default_xref_ids() -> Vec<XRefID> {
 
 // #[serde(field_identifier)]
 #[derive(Deserialize, Serialize, Debug, Copy, Clone)]
-pub (crate) enum TimeZone {
+pub enum TimeZone {
     /// ### GMT -10
     /// * Pacific/Honolulu
     #[serde(alias="Pacific/Honolulu")]
@@ -341,15 +356,15 @@ pub (crate) enum TimeZone {
     EUROPE
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-pub (crate) enum SurfaceType {
+#[derive(Deserialize, Serialize, Debug, Copy, Clone)]
+pub enum SurfaceType {
     Artificial,
     Grass,
     Indoor,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-pub (crate) enum RoofType {
+#[derive(Deserialize, Serialize, Debug, Copy, Clone)]
+pub enum RoofType {
     Dome,
     Open,
     Retractable,

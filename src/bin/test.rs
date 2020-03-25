@@ -3,7 +3,9 @@ use boss::*;
 fn main() {
     
     // boxscore::test_boxscore();
-    schedule::test_schedule();
+    // schedule::test_schedule();
+
+    get_data::get_everything();
 
     // coaches::test_coaches();
 

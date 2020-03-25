@@ -5,6 +5,8 @@
 //! 
 //! 
 
+use serde::{Serialize};
+
 pub fn test_sports() {
     
     dbg! (get_sport(1));
@@ -31,19 +33,19 @@ pub (crate) fn get_sport(id: u32) -> Sport {
 
 #[derive(Debug, Copy, Clone)]
 pub struct Sport {
-    id: u32,
-    code: &'static str,
-    name: &'static str,
-    abbr: &'static str,
-    affiliation: MLB,
-    professional: Pro,
-    international: International,
+    pub id: u32,
+    pub code: &'static str,
+    pub name: &'static str,
+    pub abbr: &'static str,
+    pub affiliation: MLB,
+    pub professional: Pro,
+    pub international: International,
     /// Made up term by the crate author. This allows for easy sorting by level of play, with 0 = MLB. 
     /// For unaffiliated ball, subjective judgements will be made as to what the appropriate rank is.
-    level_of_play_rank: u8,
+    pub level_of_play_rank: u8,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Serialize)]
 pub enum MLB {
     MLB,
     Minors,
@@ -64,7 +66,7 @@ pub enum International {
     Either,
 }
 
-const SPORTS: [Sport; 21] = 
+pub (crate) const SPORTS: [Sport; 21] = 
     [
         Sport {
             id: 1,
