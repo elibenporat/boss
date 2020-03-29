@@ -5,7 +5,7 @@
 
 // use crate::metadata::MetaData;
 use crate::players::{Player, BatSideCode, BatSideDescription};
-use crate::play_by_play::{PlayEventType, Event, Trajectory, HalfInning, Hardness, SideCode, SideDescription, PitchTypeCode, PitchTypeDescription, AllPlays};
+use crate::play_by_play::{Code, PlayEventType, Event, Trajectory, HalfInning, Hardness, SideCode, SideDescription, PitchTypeCode, PitchTypeDescription, AllPlays};
 use crate::boxscore::{Pos, WeatherCondition, WindDirection, BoxScoreData};
 use crate::schedule::{GameType, GameTypeDescription, AbstractGameState, GameMetaData};
 use crate::venues::{SurfaceType, RoofType, TimeZone, VenueData, VenueXY};
@@ -154,6 +154,9 @@ pub struct Pitch {
     ///Pitcher specific pitch num
     pub pitch_num_game: u16,   
     
+    ///Did the pitch have a pickoff play right before it?
+    pub preceded_by_pickoff: bool,
+
     //RE288 State
     pub balls_start: u8,
     pub balls_end: u8,
@@ -175,6 +178,7 @@ pub struct Pitch {
     pub swing: u8,
     // When swing == 1 this will be Some(0) or Some (1), Else None
     pub swing_and_miss: Option<u8>,
+    pub foul: u8,
 
     pub pitch_speed_start: Option<f32>,
     pub pitch_speed_end: Option<f32>,
@@ -370,6 +374,7 @@ impl From <GameData> for Vec<Pitch> {
         let player_meta = data.meta_data.players;
         let coaches = data.meta_data.coaches.get(&game_pk).unwrap();
         let scorer_meta = data.meta_data.feed.get(&game_pk);
+        let re_288_default = data.meta_data.re_288_default;
         
         let home_team = data.meta_data.teams.get(&(box_meta.home_team_id, year)).unwrap().clone();
         let away_team = data.meta_data.teams.get(&(box_meta.away_team_id, year)).unwrap().clone();
@@ -398,18 +403,21 @@ impl From <GameData> for Vec<Pitch> {
             None => (None, None, None, None),
         };
 
+        // Set the initial half-inning state that we check against
+        let mut previous_half_inning = HalfInning::Top;
+        let mut base_value_start = 0u8;
+        let mut base_value_end = 0u8;
+        let mut outs_start = 0u8;
+        let mut outs_end = 0u8;
+        let mut pitch_num_inning = 0u8;
 
         for plate_app in plays {
-            // Set the initial state for the half inning
-            let mut balls_start = 0u8;
-            let mut balls_end = 0u8;
-            let mut strikes_start = 0u8;
-            let mut strikes_end = 0u8;
-            let mut outs_start = 0u8;
-            let mut outs_end = 0u8;
-            let mut base_value_start = 0u8;
-            let mut base_value_end = 0u8;
-
+            // Set the initial state for the half inning if the half inning has changed since the last plate appearance
+            
+            let mut preceded_by_pickoff = false;
+            
+            let mut pitch_num_plate_appearance = 0;
+            
             let half_inning = plate_app.about.half_inning;
             let num_plate_appearance = plate_app.about.plate_appearance_index + 1;
             let num_inning = plate_app.about.inning_num;
@@ -419,6 +427,24 @@ impl From <GameData> for Vec<Pitch> {
             let pitcher = plate_app.matchup.pitcher_id;
             let pitcher_throws = plate_app.matchup.pitcher_pitch_hand_code;
             let pitcher_throws_desc = plate_app.matchup.pitcher_pitch_hand_desc;
+
+            let runner_data = plate_app.runners;
+                        
+            // Balls and Strike are always reset to 0
+            let mut balls_start = 0u8;
+            let mut balls_end = 0u8;
+            let mut strikes_start = 0u8;
+            let mut strikes_end = 0u8;
+
+            if half_inning != previous_half_inning {
+                base_value_start = 0;
+                base_value_end = 0;
+                outs_start = 0;
+                outs_end = 0;
+                pitch_num_inning = 0;
+            }
+
+            //If we see a different half-inning reset the base/out state as well
 
             let batter_details = player_meta.get(&batter).unwrap().clone();
             let pitcher_details = player_meta.get(&pitcher).unwrap().clone();
@@ -465,7 +491,21 @@ impl From <GameData> for Vec<Pitch> {
                 HalfInning::Bottom => (away_team.id, away_team.clone().team_city_name, away_parent_team.id, away_parent_team.clone().team_city_name),
             };
 
+            let mut pitch_num_game = 0;
+
+            let mut re_288_batter_responsible = true;
+
             for event in plate_app.play_events {
+
+                base_value_end = runner_data.iter()
+                                                .filter(|i| i.play_index == event.index)
+                                                .map (|r| r.end_base_value)
+                                                .sum();
+                // PROBLEM: If a run scores on a non-pitch event (or base state changes) we aren't capturing that.
+                let runs_scored = runner_data.iter()
+                                                .filter(|i| i.play_index == event.index)
+                                                .map (|r| r.runs)
+                                                .sum();
 
                 match event.play_event_type {
                     PlayEventType::Action => {
@@ -499,13 +539,70 @@ impl From <GameData> for Vec<Pitch> {
 
 
                             },
-                            // Do nothing for all other event types for now
-                            _ => {},
+                            // Do nothing for all other event types for now, except mark the batter as not responsible
+                            // I'm not entirely sure if this works properly yet, but we are ignoring all base/out state changes
+                            // that don't result from a ball/strike/foul/in-play. We also have no way of taking away responsibility
+                            // for hit-and-runs that end up as caught stealing.
+                            _ => {re_288_batter_responsible = false;},
                         }
                         
                     }
-                    PlayEventType::Pickoff => {}
+                    PlayEventType::Pickoff => {
+                        preceded_by_pickoff = true;
+                    }
                     PlayEventType::Pitch => {
+                        
+                        pitch_num_game += 1;
+                        pitch_num_plate_appearance += 1;
+                        pitch_num_inning +=1;
+
+                        let mut in_play_1b = 0;
+                        let mut in_play_2b = 0;
+                        let mut in_play_3b = 0;
+                        let mut in_play_hr = 0;
+            
+                        let mut strikeout = 0;
+                        let mut walk = 0;
+            
+                        let mut swing = 0;
+                        let mut swing_and_miss = None;
+                        let mut foul = 0;
+
+                        match event.details.code {
+                            // Ball or Ball in Dirt
+                            Code::BD | Code::B => {
+                                balls_end = balls_start + 1;
+                                if balls_end == 4 {walk = 1};
+                            },
+                            
+                            // Called Strike
+                            Code::C => {
+                                strikes_end = strikes_start +1;
+                                if strikes_end == 3 {strikes_start = 1};
+                                swing = 1;
+                            },
+                            
+                            //Swinging Strike
+                            Code::S => {
+                                strikes_end = strikes_start +1;
+                                if strikes_end == 3 {strikes_start = 1};
+                                swing = 1;
+                                swing_and_miss = Some(1);
+                            },
+
+                            //Foul Ball
+                            Code::F => {
+                                foul = 1;
+                                if strikes_start < 2 {strikes_end = strikes_start + 1};
+                            },
+
+                            //In Play
+                            Code::D | Code::E | Code::X => {
+                                swing = 1;
+                                swing_and_miss = Some (0);
+                            },
+                        };
+                        
                         //if our event type is a pitch, we can safely unwrap the pitch_data
                         let pitch_data = event.pitch_data.unwrap();
                         
@@ -537,6 +634,35 @@ impl From <GameData> for Vec<Pitch> {
                             )},
                             None => (None, None, None, None, None, None, None,),
                         };
+
+                        // Calculate the spray angle and the hit distance (in pixels)
+                        let (hit_data_spray_angle, hit_data_calc_distance) = 
+                        
+                        match (hit_data_coord_x, hit_data_coord_y) {
+                            (Some(x), Some(y)) => {
+                                let x_2 = (venue_home_plate_x - x) * (venue_home_plate_x - x) ;
+                                let y_2 = (venue_home_plate_y - y) * (venue_home_plate_y - y) ;
+                                
+                                let hit_data_calc_distance = (x_2 + y_2).sqrt();
+                                
+                                use std::f32::consts::PI;
+
+                                let temp_angle = ((venue_home_plate_y - y)/hit_data_calc_distance).acos()/PI*180f32;
+
+                                let hit_data_spray_angle = match (x < venue_home_plate_x) {
+                                    true =>  45i8 - temp_angle.round() as i8,
+                                    false => 45i8 + temp_angle.round() as i8,
+                                };
+
+                                (Some(hit_data_spray_angle), Some(hit_data_calc_distance))
+
+                            }
+                            (_, _) => {(None, None)}
+                        };
+
+                        let re_288_start = re_288_default.get(&(balls_start, strikes_start, base_value_start, outs_start)).unwrap();
+                        let re_288_end = if outs_end == 3 {&0f32} else {re_288_default.get(&(balls_end % 4, strikes_end % 3, base_value_end, outs_end)).unwrap()};
+                        let re_288_val = re_288_end - re_288_start + runs_scored as f32;
 
                         pitches.push(
                             Pitch {
@@ -687,9 +813,10 @@ impl From <GameData> for Vec<Pitch> {
                                 pitcher_college_name: pitcher_details.college_name.clone(),
                                 
                                 // TODO fix these!!!
-                                pitch_num_plate_appearance: 0,
-                                pitch_num_inning: 0,    
-                                pitch_num_game: 0,
+                                pitch_num_plate_appearance,
+                                pitch_num_inning,    
+                                pitch_num_game,
+                                preceded_by_pickoff,
                                 balls_start,
                                 balls_end,
                                 strikes_start,
@@ -698,13 +825,14 @@ impl From <GameData> for Vec<Pitch> {
                                 outs_end,
                                 base_value_start,
                                 base_value_end,
-                                runs_scored: 0,
-                                re_288_batter_responsible: true,
-                                re_288_start: 0f32,
-                                re_288_end: 0f32,
-                                re_288_val: 0f32,
-                                swing: 0,
-                                swing_and_miss: Some(0),
+                                runs_scored,
+                                re_288_batter_responsible,
+                                re_288_start: *re_288_start,
+                                re_288_end: *re_288_end,
+                                re_288_val,
+                                swing,
+                                foul,
+                                swing_and_miss,
 
                                 in_play: event.details.is_in_play.unwrap().into(),
 
@@ -735,12 +863,12 @@ impl From <GameData> for Vec<Pitch> {
                                 pitch_type_desc,
 
                                 // FIX THIS!!
-                                in_play_1b: 0,
-                                in_play_2b: 0,
-                                in_play_3b: 0,
-                                in_play_hr: 0,
-                                strikeout: 0,
-                                walk: 0,
+                                in_play_1b,
+                                in_play_2b,
+                                in_play_3b,
+                                in_play_hr,
+                                strikeout,
+                                walk,
 
                                 hit_data_coord_x, 
                                 hit_data_coord_y, 
@@ -751,8 +879,8 @@ impl From <GameData> for Vec<Pitch> {
                                 hit_data_total_distance, 
 
                                 //TODO - Add the distance and angle logic!
-                                hit_data_spray_angle: Some(0),
-                                hit_data_calc_distance: Some(300f32),
+                                hit_data_spray_angle,
+                                hit_data_calc_distance,
 
                                 official_scorer_id,
                                 official_scorer_name: official_scorer_name.clone(),
@@ -776,7 +904,18 @@ impl From <GameData> for Vec<Pitch> {
                                 
 
                             }
-                        )
+                        );
+                        // The pitches.push() function ends here
+                        // If we've pushed a pitch, we can reset the preceded_by_pickoff flag
+                        preceded_by_pickoff = false;
+
+                        // Set the new start_state for the next pitch
+                        balls_start = balls_end;
+                        strikes_start = strikes_end;
+                        base_value_start = base_value_end;
+
+                        // Set the half_inning state so we can check if it has changed
+                        previous_half_inning = half_inning;
                     }
                 }
             }

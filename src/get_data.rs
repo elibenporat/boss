@@ -82,6 +82,7 @@ pub fn get_meta_data(years: Vec<u16>, sport_ids: Vec<u32>) -> VecMetaDataInputs 
     let boxscore_data = get_boxscore_data(&schedule_data);
     dbg! (boxscore_data.len());
 
+
     let coaches_data = get_coach_data(&schedule_data);
     dbg!(coaches_data.len());
                 
@@ -414,7 +415,7 @@ fn get_boxscore_data (schedule_data: &Vec<GameMetaData>) -> Vec<BoxScoreData> {
         .filter(|game| !games_cached.contains(&game.game_pk) && game.game_status == AbstractGameState::Final)
         .filter(|game| !error_games.contains(&game.game_pk))
         .map(|game| (game.game_pk, game.game_url_boxscore.clone()))
-        .take(5_000)
+        .take(500)
         // .take(0)
         .collect()
         ;

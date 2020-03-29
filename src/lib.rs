@@ -33,6 +33,7 @@
 pub mod boxscore;
 pub mod cache;
 pub mod coaches;
+pub mod defense;
 // pub mod error;
 pub mod feed_live;
 pub mod game;
@@ -40,6 +41,7 @@ pub mod get_data;
 pub mod metadata;
 pub mod play_by_play;
 pub mod players;
+pub mod run_expectancy;
 pub mod schedule;
 pub mod sports;
 pub mod team;

@@ -38,14 +38,15 @@ type ID = u32;
 type Year = u16;
 
 pub struct MetaData {
-    pub schedule:   HashMap<GamePK,     GameMetaData>,
-    pub boxscore:   HashMap<GamePK,     BoxScore>,
-    pub venue:      HashMap<(ID, Year), Venue>,
-    pub venue_x_y:  HashMap<ID,         VenueXY>,
-    pub coaches:    HashMap<GamePK,     CoachData>,
-    pub teams:      HashMap<(ID, Year), Team>,
-    pub players:    HashMap<ID,         Player>,
-    pub feed:       HashMap<GamePK,     FeedData>,
+    pub schedule:       HashMap<GamePK,             GameMetaData>,
+    pub boxscore:       HashMap<GamePK,             BoxScore>,
+    pub venue:          HashMap<(ID, Year),         Venue>,
+    pub venue_x_y:      HashMap<ID,                 VenueXY>,
+    pub coaches:        HashMap<GamePK,             CoachData>,
+    pub teams:          HashMap<(ID, Year),         Team>,
+    pub players:        HashMap<ID,                 Player>,
+    pub feed:           HashMap<GamePK,             FeedData>,
+    pub re_288_default: HashMap<(u8, u8, u8, u8),   f32>,
 }
 
 // Converts all metadata into Hashmaps that the play by play data can use.
@@ -112,6 +113,12 @@ impl From<VecMetaDataInputs> for MetaData {
             .collect()
             ;
 
+        let re_288_default: HashMap<(u8, u8, u8, u8), f32> =
+            crate::run_expectancy::RE288_DEFAULT.iter()
+            .map (|re| ((re.balls, re.strikes, re.base_value, re.outs), re.run_expectancy))
+            .collect()
+            ;
+
         MetaData {
             schedule,
             boxscore,
@@ -121,6 +128,7 @@ impl From<VecMetaDataInputs> for MetaData {
             teams,
             players,
             feed,
+            re_288_default,
         }
     }
 }

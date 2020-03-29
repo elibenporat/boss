@@ -200,6 +200,8 @@ pub enum PitchTypeDescription {
 pub (crate) struct PlayEvent {
     pub (crate) details: PlayEventDetails,
     pub (crate) is_pitch: bool,
+    // This index is used to find the matching runner events
+    pub (crate) index: u8,
     pub (crate) event: Event,
     #[serde(rename="type")]
     pub (crate) play_event_type: PlayEventType,
@@ -207,6 +209,7 @@ pub (crate) struct PlayEvent {
     pub (crate) hit_data: Option<HitData>,
     pub (crate) player: Option<PlayerID>,
     pub (crate) position: Option<crate::boxscore::Position>,
+    pub (crate) start_time: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -215,7 +218,10 @@ pub (crate) struct PlayerID {
 }
 
 #[derive(Debug, Deserialize)]
-pub (crate) enum Code {
+pub enum Code {
+  /// Ball in dirt
+  #[serde(rename="*B")]
+  BD,
   /// Ball
   B,
   /// Called Strike
@@ -243,6 +249,7 @@ pub (crate) struct PlayEventDetails {
   pub (crate) is_in_play: Option<bool>,
   #[serde(rename="type")]
   pub (crate) pitch_type: Option<PitchType>,
+  pub (crate) code: Code,
 }
 
 ///Result captures plate appearance level details. We ignore the "rbi", "awayscore" and "homescore" fields, as we'll be manually tracking game state,
@@ -350,6 +357,7 @@ pub(crate) struct RunnerDetails {
     // movement_reason: RunnerMovementReason,
     rbi: bool,
     earned: bool,
+    play_index: u8,
 }
 
 
@@ -386,14 +394,15 @@ impl From<Base> for BaseValue {
 #[derive(Debug, Deserialize)]
 #[serde(from="Runner")]
 pub (crate) struct RunnerData {
-    runner_id: u32,
-    start_base_value: u8,
-    end_base_value: u8,
-    runs: u8,
-    event: Event,
-    event_type: EventType,
-    rbi: bool,
-    earned: bool,
+    pub (crate) runner_id: u32,
+    pub (crate) start_base_value: u8,
+    pub (crate) end_base_value: u8,
+    pub (crate) runs: u8,
+    pub (crate) event: Event,
+    pub (crate) event_type: EventType,
+    pub (crate) rbi: bool,
+    pub (crate) earned: bool,
+    pub (crate) play_index: u8,
 }
 
 //TODO We can remove this from and do it at a later stage. TBD
@@ -423,6 +432,7 @@ impl From <Runner> for RunnerData {
             event_type: runner.details.event_type,
             rbi: runner.details.rbi,
             earned: runner.details.earned,
+            play_index: runner.details.play_index,
         }
     }
 }
