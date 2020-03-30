@@ -15,6 +15,7 @@ use crate::sports;
 use crate::team::{TeamData, TeamJson};
 use crate::utils::stream;
 use crate::venues::{VenueXY, Venues, VenueData};
+use crate::game::{Pitch, GameData};
 
 use rayon::prelude::*;
 use std::collections::{BTreeSet};
@@ -30,9 +31,9 @@ pub fn get_everything() {
     let years = YearRange::from_range_inc(2005 ..= 2020);
     let sport_ids = sports::get_all_sport_ids();
 
-    let _meta = get_meta_data(years, sport_ids);
+    let meta = get_meta_data(years, sport_ids);
 
-    // get_play_by_play(meta);
+    get_play_by_play(meta);
 }
 
 pub fn get_play_by_play (meta: VecMetaDataInputs) {
@@ -40,28 +41,41 @@ pub fn get_play_by_play (meta: VecMetaDataInputs) {
     // Clone the schedule data from the metadata so we can consume the metadata
     let schedule = meta.schedule.clone();
     // Convert all metadata into Hashmaps that the play by play data can use.
-    let _meta_data: MetaData = meta.into();
+    
+    println!("Processing metadata...");
 
-    let pbp_urls: Vec<String> = schedule.iter()
+    let meta_data: MetaData = meta.into();
+
+    println!("Processed all the metadata");
+
+    let pbp_urls: Vec<(u32, String)> = schedule.iter()
         .filter(|game| game.game_status == AbstractGameState::Final)
-        .map(|game| format!("http://statsapi.mlb.com/api/v1/game/{}/playByPlay", game.game_pk))
+        .map(|game| (game.game_pk, format!("http://statsapi.mlb.com/api/v1/game/{}/playByPlay", game.game_pk)))
         // .skip (5_000)
-        // .take(1)
+        .take(5_000)
         .collect()
         ;
 
     let http_client = isahc::HttpClient::new().unwrap();
 
-    let _result: Vec<Game> = pbp_urls.into_par_iter()
-        .inspect(|url| println!("{}", &url))
-        .map (|url| http_client.get(url).unwrap().text().unwrap())
+    let result: Vec<Pitch> = pbp_urls.into_iter()
+        .inspect(|data| println!("{}", &data.1))
+        .map (|data| (data.0, http_client.get(data.1).unwrap().text().unwrap()))
         .map (|data| {
-            let pbp: Game = serde_json::from_str(&data).unwrap();
-            pbp
+            let pbp: Game = serde_json::from_str(&data.1).unwrap();
+            let game_data = GameData {
+                pitch_data: pbp.all_plays,
+                meta_data: &meta_data,
+                game_pk: data.0,
+            };
+            let pitches: Vec<Pitch> = game_data.into();
+            pitches
         })
+        .flatten()
         .collect()
         ;
     
+    crate::cache::write_play_by_play(&result);
 
     
     // dbg!(result);

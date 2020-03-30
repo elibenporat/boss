@@ -29,8 +29,10 @@ use crate::feed_live;
 use crate::coaches;
 use crate::players;
 use crate::team;
-use serde::{Serialize};
+use crate::game;
+use serde::Serialize;
 use serde::de::DeserializeOwned;
+use csv::Writer;
 
 
 const VENUE_X_Y_JSON: &str = "\\venue_xy.json";
@@ -41,6 +43,7 @@ const BOXSCORE_JSON: &str = "\\boxscore.json";
 const COACH_JSON: &str = "\\coaches.json";
 const PLAYER_JSON: &str = "\\players.json";
 const TEAMS_JSON: &str = "\\teams.json";
+const PLAY_BY_PLAY: &str = r#"F:\Baseball\baseball.csv"#;
 
 fn cache_folder () -> String {
     format!("{}{}", utils::get_directory(), "\\cache" )
@@ -76,6 +79,16 @@ where T: DeserializeOwned,
     
     serde_json::from_str(&json).unwrap_or(vec![])
     
+
+}
+
+pub (crate) fn write_play_by_play (pitches: &Vec<game::Pitch>) {
+
+    let mut csv_writer = Writer::from_path(PLAY_BY_PLAY).unwrap();
+
+    for pitch in pitches {
+        csv_writer.serialize(pitch).unwrap();
+    };
 
 }
 

@@ -18,10 +18,10 @@ use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
 
 
-pub struct GameData {
-    pitch_data: Vec<AllPlays>,
-    meta_data:  MetaData,
-    game_pk: u32,
+pub (crate) struct GameData <'m> {
+    pub (crate) pitch_data: Vec<AllPlays>,
+    pub (crate) meta_data: &'m MetaData,
+    pub (crate) game_pk: u32,
 }
 
 
@@ -59,32 +59,32 @@ pub struct Pitch {
     //Umpires and coaches
     pub hp_umpire_id: Option<u32>,
     pub hp_umpire_name: Option<String>,
-    pub hp_umpire_dob: Option<Date>,
+    pub hp_umpire_dob: String,
     pub hp_umpire_age: Option<f32>,
     pub hp_umpire_height: Option<u8>,
     pub hp_umpire_height_str: Option<String>,
 
     pub batting_coach: Option<u32>,
     pub batting_coach_name: Option<String>,
-    pub batting_coach_dob: Option<Date>,
+    pub batting_coach_dob: String,
     pub batting_coach_age: Option<f32>,
     pub batting_coach_mlb_exp: Option<bool>,
 
     pub batting_manager: Option<u32>,
     pub batting_manager_name: Option<String>,
-    pub batting_manager_dob: Option<Date>,
+    pub batting_manager_dob: String,
     pub batting_manager_age: Option<f32>,
     pub batting_manager_mlb_exp: Option<bool>,
 
     pub pitching_coach: Option<u32>,
     pub pitching_coach_name: Option<String>,
-    pub pitching_coach_dob: Option<Date>,
+    pub pitching_coach_dob: String,
     pub pitching_coach_age: Option<f32>,
     pub pitching_coach_mlb_exp: Option<bool>,
 
     pub pitching_manager: Option<u32>,
     pub pitching_manager_name: Option<String>,
-    pub pitching_manager_dob: Option<Date>,
+    pub pitching_manager_dob: String,
     pub pitching_manager_age: Option<f32>,
     pub pitching_manager_mlb_exp: Option<bool>,
 
@@ -97,8 +97,8 @@ pub struct Pitch {
     pub pitcher_throws: SideCode,
     pub pitcher_throws_desc: SideDescription,
     pub pitcher_name: String,
-    pub pitcher_dob: Option<Date>,
-    pub pitcher_mlb_debut_date: Option<Date>,
+    pub pitcher_dob: String,
+    pub pitcher_mlb_debut_date: String,
     pub pitcher_age: Option<f32>,
     pub pitcher_birth_city: Option<String>,
     pub pitcher_birth_state_province: Option<String>,
@@ -121,8 +121,8 @@ pub struct Pitch {
     pub batter_team_name: String,
     pub batter_parent_team_id: u32,
     pub batter_parent_team_name: String,
-    pub batter_dob: Option<Date>,
-    pub batter_mlb_debut_date: Option<Date>,
+    pub batter_dob: String,
+    pub batter_mlb_debut_date: String,
     pub batter_age: Option<f32>,
     pub batter_birth_city: Option<String>,
     pub batter_birth_state_province: Option<String>,
@@ -247,7 +247,9 @@ pub struct Pitch {
     pub game_pk: u32,
     pub game_type: GameType,
     pub game_type_desc: GameTypeDescription,
-    pub game_date: Date,
+    pub game_date: String,
+    pub game_year: u16,
+    pub game_month: u8,
     pub game_status: AbstractGameState,
     
     // Venue Metadata
@@ -341,8 +343,13 @@ fn get_ump (id: Option<u32>, game_date:Date, ump_map: &HashMap<u32, Player>) ->
             let ump = ump_map.get(&ump_id);
             match ump {
                 Some (ump) => (
-                    //Check here for a bad unwrap. Fix this later.
-                    Some(ump.clone().name), ump.birth_date, Some(game_date - ump.birth_date.unwrap()), Some(ump.height_in), ump.clone().height_str
+                    {
+                        let age = match ump.birth_date {
+                        Some (dob) =>  Some(game_date - dob),
+                        None => None,
+                        };
+                        (Some(ump.clone().name), ump.birth_date, age, Some(ump.height_in), ump.clone().height_str)
+                    }
                 ),
                 None => (None, None, None, None, None),
             }
@@ -354,27 +361,46 @@ fn get_ump (id: Option<u32>, game_date:Date, ump_map: &HashMap<u32, Player>) ->
 
 
 ///Convert all the data about the game into a vector of pitches
-impl From <GameData> for Vec<Pitch> {
+impl <'m> From <GameData<'m>> for Vec<Pitch> {
 
-    fn from(data: GameData) -> Vec<Pitch> {
+    fn from (data: GameData) -> Vec<Pitch> {
 
         let plays = data.pitch_data;
 
         // 300 should be around the size of each game. This will minimize allocations
         let mut pitches: Vec<Pitch> = Vec::with_capacity(300);
         let game_pk = data.game_pk;
-
-        // We check earlier to make sure the game has complete metadata before processing. We will
-        // need to handle games that are missing metadata, ideally with Default impls.
+        
+        //we start with the schedule, so we can safely unwrap here
         let sched_meta = data.meta_data.schedule.get(&game_pk).unwrap();
         let year: u16 = sched_meta.game_date.year;
+
+        // We check here to make sure the game has complete metadata before processing. We will
+        // need to handle games that are missing metadata, ideally with Default impls.
+        
+        if !data.meta_data.boxscore.contains_key(&game_pk) {return vec![]};
         let box_meta = data.meta_data.boxscore.get(&game_pk).unwrap();
-        let venue_meta = data.meta_data.venue.get(&(game_pk, year)).unwrap();
+
+        let has_all_metadata: bool = 
+            data.meta_data.schedule.contains_key(&game_pk) &&
+            data.meta_data.venue.contains_key(&(sched_meta.game_venue_id, year)) &&
+            data.meta_data.venue_x_y.contains_key (&sched_meta.game_venue_id) &&
+            data.meta_data.coaches.contains_key(&game_pk) &&
+            data.meta_data.feed.contains_key(&game_pk) &&
+            data.meta_data.teams.contains_key(&(box_meta.home_team_id, year)) &&
+            data.meta_data.teams.contains_key(&(box_meta.away_team_id, year)) &&
+            data.meta_data.teams.contains_key(&(box_meta.home_parent_team_id, year)) &&
+            data.meta_data.teams.contains_key(&(box_meta.away_parent_team_id, year))
+        ;
+
+        if !has_all_metadata {return vec![]};
+
+        let venue_meta = data.meta_data.venue.get(&(sched_meta.game_venue_id, year)).unwrap();
         let venue_x_y = data.meta_data.venue_x_y.get(&sched_meta.game_venue_id);
-        let player_meta = data.meta_data.players;
+        let player_meta = data.meta_data.players.clone();
         let coaches = data.meta_data.coaches.get(&game_pk).unwrap();
         let scorer_meta = data.meta_data.feed.get(&game_pk);
-        let re_288_default = data.meta_data.re_288_default;
+        // let re_288_default = data.meta_data.re_288_default;
         
         let home_team = data.meta_data.teams.get(&(box_meta.home_team_id, year)).unwrap().clone();
         let away_team = data.meta_data.teams.get(&(box_meta.away_team_id, year)).unwrap().clone();
@@ -390,6 +416,11 @@ impl From <GameData> for Vec<Pitch> {
         let hp_umpire_id = box_meta.hp_umpire_id;
         let hp_details = get_ump(hp_umpire_id, sched_meta.game_date, &player_meta);
 
+        let hp_umpire_dob = match hp_details.1 {
+            Some (dob) => dob.to_string(),
+            None => "".to_string(),
+        };
+
         let sport_id = sched_meta.sport_id;
         let sport_details = crate::sports::get_sport(sport_id);
 
@@ -403,6 +434,7 @@ impl From <GameData> for Vec<Pitch> {
             None => (None, None, None, None),
         };
 
+
         // Set the initial half-inning state that we check against
         let mut previous_half_inning = HalfInning::Top;
         let mut base_value_start = 0u8;
@@ -410,6 +442,7 @@ impl From <GameData> for Vec<Pitch> {
         let mut outs_start = 0u8;
         let mut outs_end = 0u8;
         let mut pitch_num_inning = 0u8;
+        let mut pitch_num_game = 0u16;
 
         for plate_app in plays {
             // Set the initial state for the half inning if the half inning has changed since the last plate appearance
@@ -449,6 +482,23 @@ impl From <GameData> for Vec<Pitch> {
             let batter_details = player_meta.get(&batter).unwrap().clone();
             let pitcher_details = player_meta.get(&pitcher).unwrap().clone();
 
+            let batter_dob = match batter_details.birth_date {
+                Some (dob) => dob.to_string(),
+                None => "".to_string(),
+            };
+            let pitcher_dob = match pitcher_details.birth_date {
+                Some (dob) => dob.to_string(),
+                None => "".to_string(),
+            };
+            let batter_mlb_debut_date = match batter_details.mlb_debut_date {
+                Some (dob) => dob.to_string(),
+                None => "".to_string(),
+            };
+            let pitcher_mlb_debut_date = match pitcher_details.mlb_debut_date {
+                Some (dob) => dob.to_string(),
+                None => "".to_string(),
+            };
+
             let (batting_coach, pitching_coach, batting_manager, pitching_manager) = match half_inning {
                 HalfInning::Top =>
                     ( coaches.away_coaches.batting_coach, coaches.home_coaches.pitching_coach,
@@ -464,6 +514,27 @@ impl From <GameData> for Vec<Pitch> {
             let pitching_coach_details = get_coach(pitching_coach, sched_meta.game_date, &player_meta);
             let batting_manager_details = get_coach(batting_manager, sched_meta.game_date, &player_meta);
             let pitching_manager_details = get_coach(pitching_manager, sched_meta.game_date, &player_meta);
+
+            let batting_coach_dob = match batting_coach_details.2 {
+                Some (dob) => dob.to_string(),
+                None => "".to_string(),
+            };
+
+            let pitching_coach_dob = match pitching_coach_details.2 {
+                Some (dob) => dob.to_string(),
+                None => "".to_string(),
+            };
+
+            let batting_manager_dob = match batting_manager_details.2 {
+                Some (dob) => dob.to_string(),
+                None => "".to_string(),
+            };
+
+            let pitching_manager_dob = match pitching_manager_details.2 {
+                Some (dob) => dob.to_string(),
+                None => "".to_string(),
+            };
+
 
             //Set the defensive and offensive players
             let (mut defense, players) = match half_inning {
@@ -491,21 +562,44 @@ impl From <GameData> for Vec<Pitch> {
                 HalfInning::Bottom => (away_team.id, away_team.clone().team_city_name, away_parent_team.id, away_parent_team.clone().team_city_name),
             };
 
-            let mut pitch_num_game = 0;
-
             let mut re_288_batter_responsible = true;
+
+            //Some plays don't have any events, but have runner events. We'll update those here in that case
+            //Still have an issue if this is a run scoring event, don't know how to fix that yet
+            if plate_app.play_events.len() == 0 {
+                base_value_end = runner_data.iter()
+                .filter(|i| i.play_index == -1)
+                .map (|r| r.end_base_value)
+                .sum();
+            
+                outs_end = outs_start + runner_data.iter()
+                .filter(|i| i.play_index == -1)
+                .map (|r| r.outs)
+                .sum::<u8>();
+            }
 
             for event in plate_app.play_events {
 
                 base_value_end = runner_data.iter()
-                                                .filter(|i| i.play_index == event.index)
+                                                .filter(|i| i.play_index == event.index as i8)
                                                 .map (|r| r.end_base_value)
                                                 .sum();
                 // PROBLEM: If a run scores on a non-pitch event (or base state changes) we aren't capturing that.
                 let runs_scored = runner_data.iter()
-                                                .filter(|i| i.play_index == event.index)
+                                                .filter(|i| i.play_index == event.index as i8)
                                                 .map (|r| r.runs)
                                                 .sum();
+
+                outs_end = outs_start + runner_data.iter()
+                                                .filter(|i| i.play_index == event.index as i8)
+                                                .map (|r| r.outs)
+                                                .sum::<u8>();
+
+
+                if runner_data.len() > 0 {
+                    if runner_data[0].play_index == -1 {base_value_end = runner_data[0].end_base_value}
+                }
+;
 
                 match event.play_event_type {
                     PlayEventType::Action => {
@@ -516,7 +610,7 @@ impl From <GameData> for Vec<Pitch> {
                             // care who the player being switched out is, since we just overwrite the position. It also
                             // doesn't matter who is subbing in for who, the position that that player moves to is all
                             // we care about
-                            Event::DefensiveSubstitution | Event::DefensiveSwitch => {
+                            Some(Event::DefensiveSubstitution) | Some(Event::DefensiveSwitch) => {
                                 // We should have player and position info for every defensive switch
                                 let player_id = event.player.unwrap().id;
                                 let position = event.position.unwrap().abbreviation;
@@ -568,24 +662,31 @@ impl From <GameData> for Vec<Pitch> {
                         let mut swing_and_miss = None;
                         let mut foul = 0;
 
-                        match event.details.code {
+                        match event.details.code.unwrap_or(Code::Other) {
                             // Ball or Ball in Dirt
                             Code::BD | Code::B => {
                                 balls_end = balls_start + 1;
                                 if balls_end == 4 {walk = 1};
+                                swing = 0;
                             },
                             
                             // Called Strike
                             Code::C => {
                                 strikes_end = strikes_start +1;
-                                if strikes_end == 3 {strikes_start = 1};
-                                swing = 1;
+                                if strikes_end == 3 {
+                                    // outs_end += 1;
+                                    strikeout = 1;
+                                };
+                                swing = 0;
                             },
                             
-                            //Swinging Strike
-                            Code::S => {
-                                strikes_end = strikes_start +1;
-                                if strikes_end == 3 {strikes_start = 1};
+                            //Swinging Strike or Foul Bunt
+                            Code::S | Code::L => {
+                                strikes_end = strikes_start + 1;
+                                if strikes_end == 3 {
+                                    // outs_end += 1;
+                                    strikeout = 1;
+                                };
                                 swing = 1;
                                 swing_and_miss = Some(1);
                             },
@@ -594,6 +695,7 @@ impl From <GameData> for Vec<Pitch> {
                             Code::F => {
                                 foul = 1;
                                 if strikes_start < 2 {strikes_end = strikes_start + 1};
+                                swing = 1;
                             },
 
                             //In Play
@@ -601,6 +703,9 @@ impl From <GameData> for Vec<Pitch> {
                                 swing = 1;
                                 swing_and_miss = Some (0);
                             },
+
+                            // All other cases, such as POs
+                            _ => {},
                         };
                         
                         //if our event type is a pitch, we can safely unwrap the pitch_data
@@ -660,8 +765,8 @@ impl From <GameData> for Vec<Pitch> {
                             (_, _) => {(None, None)}
                         };
 
-                        let re_288_start = re_288_default.get(&(balls_start, strikes_start, base_value_start, outs_start)).unwrap();
-                        let re_288_end = if outs_end == 3 {&0f32} else {re_288_default.get(&(balls_end % 4, strikes_end % 3, base_value_end, outs_end)).unwrap()};
+                        let re_288_start = data.meta_data.re_288_default.get(&(balls_start, strikes_start, base_value_start, outs_start)).unwrap_or(&0f32);
+                        let re_288_end = if outs_end == 3 {&0f32} else {data.meta_data.re_288_default.get(&(balls_end % 4, strikes_end % 3, base_value_end, outs_end % 3)).unwrap_or(&0f32)};
                         let re_288_val = re_288_end - re_288_start + runs_scored as f32;
 
                         pitches.push(
@@ -689,31 +794,31 @@ impl From <GameData> for Vec<Pitch> {
                                 
                                 batting_coach,
                                 batting_coach_name: batting_coach_details.1.clone(),
-                                batting_coach_dob: batting_coach_details.2,
+                                batting_coach_dob: batting_coach_dob.clone(),
                                 batting_coach_age: batting_coach_details.3,
                                 batting_coach_mlb_exp: batting_coach_details.4,
         
                                 pitching_coach,
                                 pitching_coach_name: pitching_coach_details.1.clone(),
-                                pitching_coach_dob: pitching_coach_details.2,
+                                pitching_coach_dob: pitching_coach_dob.clone(),
                                 pitching_coach_age: pitching_coach_details.3,
                                 pitching_coach_mlb_exp: pitching_coach_details.4,
 
                                 batting_manager,
                                 batting_manager_name: batting_manager_details.1.clone(),
-                                batting_manager_dob: batting_manager_details.2,
+                                batting_manager_dob: batting_manager_dob.clone(),
                                 batting_manager_age: batting_manager_details.3,
                                 batting_manager_mlb_exp: batting_manager_details.4,
         
                                 pitching_manager,
                                 pitching_manager_name: pitching_manager_details.1.clone(),
-                                pitching_manager_dob: pitching_manager_details.2,
+                                pitching_manager_dob: pitching_manager_dob.clone(),
                                 pitching_manager_age: pitching_manager_details.3,
                                 pitching_manager_mlb_exp: pitching_manager_details.4,      
 
                                 hp_umpire_id,
                                 hp_umpire_name: hp_details.0.clone(), 
-                                hp_umpire_dob: hp_details.1,
+                                hp_umpire_dob: hp_umpire_dob.clone(),
                                 hp_umpire_age: hp_details.2,
                                 hp_umpire_height: hp_details.3,
                                 hp_umpire_height_str: hp_details.4.clone(),
@@ -769,8 +874,8 @@ impl From <GameData> for Vec<Pitch> {
                                 batter_parent_team_name: batter_parent_team_name.clone(),
                                 batter_age,
                                 batter_name: batter_details.name.clone(),
-                                batter_dob: batter_details.birth_date,
-                                batter_mlb_debut_date: batter_details.mlb_debut_date,
+                                batter_dob: batter_dob.clone(),
+                                batter_mlb_debut_date: batter_mlb_debut_date.clone() ,
                                 batter_birth_city: batter_details.birth_city.clone(),
                                 batter_birth_state_province: batter_details.birth_state_province.clone(),
                                 batter_birth_country: batter_details.birth_country.clone(),
@@ -795,8 +900,8 @@ impl From <GameData> for Vec<Pitch> {
                                 pitcher_parent_team_name: pitcher_parent_team_name.clone(),
                                 pitcher_age,
                                 pitcher_name: pitcher_details.name.clone(),
-                                pitcher_dob: pitcher_details.birth_date,
-                                pitcher_mlb_debut_date: pitcher_details.mlb_debut_date,
+                                pitcher_dob: pitcher_dob.clone(),
+                                pitcher_mlb_debut_date: pitcher_mlb_debut_date.clone(),
                                 pitcher_birth_city: pitcher_details.birth_city.clone(),
                                 pitcher_birth_state_province: pitcher_details.birth_state_province.clone(),
                                 pitcher_birth_country: pitcher_details.birth_country.clone(),
@@ -890,7 +995,9 @@ impl From <GameData> for Vec<Pitch> {
                                 game_pk: sched_meta.game_pk,
                                 game_type: sched_meta.game_type,
                                 game_type_desc: sched_meta.game_type_desc,
-                                game_date: sched_meta.game_date,
+                                game_date: sched_meta.game_date.to_string(),
+                                game_year: sched_meta.game_date.year,
+                                game_month: sched_meta.game_date.month,
                                 game_status: sched_meta.game_status,
                                 game_weather_condition: box_meta.game_weather_condition,
                                 game_weather_temp_c: box_meta.game_weather_temp_c,
@@ -912,6 +1019,7 @@ impl From <GameData> for Vec<Pitch> {
                         // Set the new start_state for the next pitch
                         balls_start = balls_end;
                         strikes_start = strikes_end;
+                        outs_start = outs_end;
                         base_value_start = base_value_end;
 
                         // Set the half_inning state so we can check if it has changed

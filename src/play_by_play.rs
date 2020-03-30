@@ -202,7 +202,7 @@ pub (crate) struct PlayEvent {
     pub (crate) is_pitch: bool,
     // This index is used to find the matching runner events
     pub (crate) index: u8,
-    pub (crate) event: Event,
+    pub (crate) event: Option<Event>,
     #[serde(rename="type")]
     pub (crate) play_event_type: PlayEventType,
     pub (crate) pitch_data: Option<PitchDataParse>,
@@ -219,6 +219,9 @@ pub (crate) struct PlayerID {
 
 #[derive(Debug, Deserialize)]
 pub enum Code {
+  ///Pickoff Attempt
+  #[serde(rename="1")]
+  PO,
   /// Ball in dirt
   #[serde(rename="*B")]
   BD,
@@ -234,9 +237,12 @@ pub enum Code {
   F,
   /// Strike Swinging
   S,
+  /// Strike Foul Bunt
+  L,
   /// In Play - Outs
   X,
-
+  #[serde(other)]
+  Other,
 }
 
 // We ignore the "count" as we'll be computing the state manually
@@ -249,7 +255,7 @@ pub (crate) struct PlayEventDetails {
   pub (crate) is_in_play: Option<bool>,
   #[serde(rename="type")]
   pub (crate) pitch_type: Option<PitchType>,
-  pub (crate) code: Code,
+  pub (crate) code: Option<Code>,
 }
 
 ///Result captures plate appearance level details. We ignore the "rbi", "awayscore" and "homescore" fields, as we'll be manually tracking game state,
@@ -346,6 +352,8 @@ pub(crate) struct BaseValue {
 pub(crate) struct RunnerMovement {
     start: BaseValue,
     end: BaseValue,
+    #[serde(rename="isOut")]
+    is_out: Out,
 }
 
 #[derive(Debug, Deserialize)]
@@ -357,7 +365,8 @@ pub(crate) struct RunnerDetails {
     // movement_reason: RunnerMovementReason,
     rbi: bool,
     earned: bool,
-    play_index: u8,
+    //This is sometimes -1, need to handle in game.rs
+    play_index: i8,
 }
 
 
@@ -366,6 +375,22 @@ pub(crate) struct RunnerDetails {
 #[serde(untagged)]
 enum Base {
     BaseState (String),
+    Null,
+}
+
+impl From<Out> for u8 {
+    fn from (out: Out) -> u8 {
+        match out {
+            Out::IsOut(true) => 1,
+            _ => 0,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum Out {
+    IsOut (bool),
     Null,
 }
 
@@ -402,7 +427,8 @@ pub (crate) struct RunnerData {
     pub (crate) event_type: EventType,
     pub (crate) rbi: bool,
     pub (crate) earned: bool,
-    pub (crate) play_index: u8,
+    pub (crate) play_index: i8,
+    pub (crate) outs: u8,
 }
 
 //TODO We can remove this from and do it at a later stage. TBD
@@ -433,6 +459,7 @@ impl From <Runner> for RunnerData {
             rbi: runner.details.rbi,
             earned: runner.details.earned,
             play_index: runner.details.play_index,
+            outs: runner.movement.is_out.into(),
         }
     }
 }
