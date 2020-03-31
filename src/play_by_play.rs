@@ -308,7 +308,7 @@ pub(crate) struct Matchup {
 
 #[derive(Debug, Deserialize)]
 pub (crate) struct Player {
-    id: u32,
+    id: Option<u32>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Copy, Clone)]
@@ -450,7 +450,8 @@ pub (crate) struct MatchupData {
 impl From <Runner> for RunnerData {
     fn from (runner: Runner) -> RunnerData {
         RunnerData {
-            runner_id: runner.details.runner.id,
+            //If we don't have an id, we default to HP Umpire CB Bucknor
+            runner_id: runner.details.runner.id.unwrap_or(427044),
             start_base_value: runner.movement.start.value,
             end_base_value: runner.movement.end.value,
             runs: runner.movement.end.runs,
@@ -468,13 +469,13 @@ impl From <Runner> for RunnerData {
 impl From <Matchup> for MatchupData {
     fn from (matchup: Matchup) -> MatchupData {
         let batter_id = match matchup.batter {
-            Some(batter) => batter.id,
-            _ => 641741, //in the off chance we don't have a "batter", the default will be Gosuke Katoh, as an homage to Chris Mitchell
+            Some(batter) => batter.id.unwrap_or(427044),
+            _ => 427044, //in the off chance we don't have a batter, the default will be HP Umpire CB Bucknor
         };
 
         let pitcher_id = match matchup.pitcher {
-            Some(pitcher) => pitcher.id,
-            _ => 641741, //in the off chance we don't have a "batter", the default will be Gosuke Katoh, as an homage to Chris Mitchell
+            Some(pitcher) => pitcher.id.unwrap_or(427044),
+            _ => 427044, //in the off chance we don't have a pitcher, the default will be HP Umpire CB Bucknor
         };
         
         MatchupData {
