@@ -300,8 +300,8 @@ pub (crate) enum ResultType {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all="camelCase")]
 pub(crate) struct Matchup {
-    pub(crate) batter: Player,
-    pub(crate) pitcher: Player,
+    pub(crate) batter: Option<Player>,
+    pub(crate) pitcher: Option<Player>,
     pub(crate) bat_side: Side,
     pub(crate) pitch_hand: Side,
 }
@@ -467,11 +467,21 @@ impl From <Runner> for RunnerData {
 /// Flatten the batter-pitcher matchup data
 impl From <Matchup> for MatchupData {
     fn from (matchup: Matchup) -> MatchupData {
+        let batter_id = match matchup.batter {
+            Some(batter) => batter.id,
+            _ => 641741, //in the off chance we don't have a "batter", the default will be Gosuke Katoh, as an homage to Chris Mitchell
+        };
+
+        let pitcher_id = match matchup.pitcher {
+            Some(pitcher) => pitcher.id,
+            _ => 641741, //in the off chance we don't have a "batter", the default will be Gosuke Katoh, as an homage to Chris Mitchell
+        };
+        
         MatchupData {
-            batter_id: matchup.batter.id,
+            batter_id,
             batter_bat_side_code: matchup.bat_side.code,
             batter_bat_side_desc: matchup.bat_side.description,
-            pitcher_id: matchup.pitcher.id,
+            pitcher_id,
             pitcher_pitch_hand_code: matchup.pitch_hand.code,
             pitcher_pitch_hand_desc: matchup.pitch_hand.description,
         }

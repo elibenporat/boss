@@ -322,10 +322,14 @@ fn get_coach (id: Option<u32>, game_date:Date, coach_map: &HashMap<u32, Player>)
         {
             let coach = coach_map.get(&coach_id);
             match coach {
-                Some (coach) => (
+                Some (coach) => {
                     //Check here for a bad unwrap. Fix this later.
-                    id, Some(coach.clone().name), coach.birth_date, Some(game_date - coach.birth_date.unwrap()), Some(coach.mlb_debut_date.is_some())
-                ),
+                    let age = match coach.birth_date {
+                        Some (dob) =>  Some(game_date - dob),
+                        None => None,
+                    };
+                    (id, Some(coach.clone().name), coach.birth_date, age, Some(coach.mlb_debut_date.is_some()))
+                },
                 None => (id, None, None, None, None),
             }
         },
