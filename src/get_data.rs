@@ -48,19 +48,24 @@ pub fn get_play_by_play (meta: VecMetaDataInputs) {
 
     println!("Processed all the metadata");
 
+    let mut stored_pbp = load_play_by_play();
+
+    let games_loaded: BTreeSet<u32> = stored_pbp.iter().map(|pitch| pitch.game_pk).collect();
+
     let pbp_urls: Vec<(u32, String)> = schedule.iter()
-        .filter(|game| game.game_status == AbstractGameState::Final)
+        .filter (|game| game.game_status == AbstractGameState::Final)
+        .filter (|game| !games_loaded.contains(&game.game_pk))
         .map(|game| (game.game_pk, format!("http://statsapi.mlb.com/api/v1/game/{}/playByPlay", game.game_pk)))
-        // .skip (5_000)
         .take(5_000)
         .collect()
         ;
 
     let http_client = isahc::HttpClient::new().unwrap();
 
-    let result: Vec<Pitch> = pbp_urls.into_iter()
+    let result: Vec<Pitch> = pbp_urls.into_par_iter()
         .inspect(|data| println!("{}", &data.1))
         .map (|data| (data.0, http_client.get(data.1).unwrap().text().unwrap()))
+        .filter(|data| data.1.contains("allPlays"))
         .map (|data| {
             let pbp: Game = serde_json::from_str(&data.1).unwrap();
             let game_data = GameData {
@@ -75,11 +80,9 @@ pub fn get_play_by_play (meta: VecMetaDataInputs) {
         .collect()
         ;
     
-    crate::cache::write_play_by_play(&result);
-
-    
-    // dbg!(result);
-
+    stored_pbp.extend(result);
+    crate::cache::write_play_by_play(&stored_pbp);
+    dbg!(stored_pbp.len());
 
 }
 

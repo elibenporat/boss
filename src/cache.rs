@@ -32,7 +32,7 @@ use crate::team;
 use crate::game;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
-use csv::Writer;
+use csv::{Reader, Writer};
 
 
 const VENUE_X_Y_JSON: &str = "\\venue_xy.json";
@@ -90,6 +90,19 @@ pub (crate) fn write_play_by_play (pitches: &Vec<game::Pitch>) {
         csv_writer.serialize(pitch).unwrap();
     };
 
+}
+
+pub (crate) fn load_play_by_play () -> Vec<game::Pitch> {
+
+    let mut csv_reader = Reader::from_path(PLAY_BY_PLAY).unwrap();
+
+    type CSVResult = Result< game::Pitch, csv::Error>;
+
+    csv_reader.deserialize()
+        .filter_map(|record: CSVResult| record.ok())
+        // .map(|record| {let pitch: game::Pitch = record.unwrap(); pitch})
+        .collect()
+        
 }
 
 pub (crate) fn cache_teams_data (teams: &Vec<team::TeamData>) {

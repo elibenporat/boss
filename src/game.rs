@@ -28,13 +28,15 @@ pub (crate) struct GameData <'m> {
 /// Pitch is the final serializable struct that we'll export from this module. It will flatten all the at-bat level
 /// data for easy use. This is intentionally de-normalized for ease of use. 
 /// For ease of sorting, all counts (inning, outs balls, strikes, pitches etc. will start wit num_).
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Pitch {
   
     //at_bat level meta-data
     pub half_inning: HalfInning,
     pub num_plate_appearance: u8,
     pub num_inning: u8,
+
+    // pub time: Option<String>,
 
     //Defense on the pitch. For now, use the starting lineups for everything. Update later to include subs
     //In practice, the positions should never be None. Its possible a boxscore won't be available for a game,
@@ -765,6 +767,10 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
                             (_, _) => {(None, None)}
                         };
 
+                        // Some games have crap data that spit out extra records. Because of this, we need to unwrap_or for our RE288 table. The number of records
+                        // are very small and can be safely ignored. In the future, we may "fix" this by always setting balls_end and strikes_end to the "count" field
+                        // in the API.
+
                         let re_288_start = data.meta_data.re_288_default.get(&(balls_start, strikes_start, base_value_start, outs_start)).unwrap_or(&0f32);
                         let re_288_end = if outs_end == 3 {&0f32} else {data.meta_data.re_288_default.get(&(balls_end % 4, strikes_end % 3, base_value_end, outs_end % 3)).unwrap_or(&0f32)};
                         let re_288_val = re_288_end - re_288_start + runs_scored as f32;
@@ -774,6 +780,9 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
                                 half_inning,
                                 num_plate_appearance,
                                 num_inning,
+
+                                // time: event.start_time,
+
                                 catcher: defense.catcher,
                                 first_base: defense.first_base,
                                 second_base: defense.second_base,
