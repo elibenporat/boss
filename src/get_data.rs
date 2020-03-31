@@ -20,6 +20,7 @@ use crate::game::{Pitch, GameData};
 use rayon::prelude::*;
 use std::collections::{BTreeSet};
 use isahc::prelude::*;
+use serde::{Serialize, Deserialize};
 
 
 
@@ -32,42 +33,55 @@ pub fn get_everything() {
     let sport_ids = sports::get_all_sport_ids();
 
     let meta = get_meta_data(years, sport_ids);
+    let schedule = meta.schedule.clone();
+    let meta_data = meta.into();
 
-    get_play_by_play(meta);
+    for _ in 0 .. 50 {
+        get_play_by_play(schedule.clone(), &meta_data);
+    }
 }
 
-pub fn get_play_by_play (meta: VecMetaDataInputs) {
+pub fn get_play_by_play (schedule: Vec<GameMetaData>, meta_data: &MetaData) {
 
-    // Clone the schedule data from the metadata so we can consume the metadata
-    let schedule = meta.schedule.clone();
-    // Convert all metadata into Hashmaps that the play by play data can use.
+
+    #[derive(Serialize, Deserialize)]
+    struct GamesProcessed {
+        good: BTreeSet<u32>,
+        bad: BTreeSet<u32>,
+    }
+
+    let json = std::fs::read_to_string(r#"F:\Baseball\games_processed.json"#).unwrap();
+    let games_processed: GamesProcessed = serde_json::from_str(&json).unwrap();
+
+    // let mut stored_pbp = load_play_by_play();
+    // let games_loaded: BTreeSet<u32> = stored_pbp.iter().map(|pitch| pitch.game_pk).collect();
     
-    println!("Processing metadata...");
+    // println!("Loaded {} games", games_loaded.len());
 
-    let meta_data: MetaData = meta.into();
+    let mut good_games: BTreeSet<u32> = games_processed.good;
+    let mut bad_games: BTreeSet<u32> = games_processed.bad;
 
-    println!("Processed all the metadata");
-
-    let mut stored_pbp = load_play_by_play();
-
-    let games_loaded: BTreeSet<u32> = stored_pbp.iter().map(|pitch| pitch.game_pk).collect();
-
-    let pbp_urls: Vec<(u32, String)> = schedule.iter()
+    let pbp_urls: BTreeSet<(u32, String)> = schedule.iter()
         .filter (|game| game.game_status == AbstractGameState::Final)
-        .filter (|game| !games_loaded.contains(&game.game_pk))
+        .filter (|game| !good_games.contains(&game.game_pk))
+        .filter (|game| !bad_games.contains(&game.game_pk))
         .map(|game| (game.game_pk, format!("http://statsapi.mlb.com/api/v1/game/{}/playByPlay", game.game_pk)))
         .take(5_000)
         .collect()
         ;
+        
+    // we keep track of the requested games. Any that didn't return a result we'll package as a "bad" game
+    let requested_games: BTreeSet<u32> = pbp_urls.iter().map(|game| game.0).collect();
+    dbg!(requested_games.len());
 
     let http_client = isahc::HttpClient::new().unwrap();
 
     let result: Vec<Pitch> = pbp_urls.into_par_iter()
-        .inspect(|data| println!("{}", &data.1))
+        // .inspect(|data| println!("{}", &data.1))
         .map (|data| (data.0, http_client.get(data.1).unwrap().text().unwrap()))
         .filter(|data| data.1.contains("allPlays"))
         .map (|data| {
-            let pbp: Game = serde_json::from_str(&data.1).unwrap();
+            let pbp: Game = serde_json::from_str(&data.1).expect(&format!("Error with game_pk: {}", data.0));
             let game_data = GameData {
                 pitch_data: pbp.all_plays,
                 meta_data: &meta_data,
@@ -79,10 +93,34 @@ pub fn get_play_by_play (meta: VecMetaDataInputs) {
         .flatten()
         .collect()
         ;
+        
     
-    stored_pbp.extend(result);
-    crate::cache::write_play_by_play(&stored_pbp);
-    dbg!(stored_pbp.len());
+    let games_returned: BTreeSet<u32> = result.iter().map(|game|game.game_pk).collect();
+    let games_missed: BTreeSet<u32> = requested_games.into_iter().filter(|game| !games_returned.contains(game)).collect();
+    
+    //They should equal the requested_games.len()
+    dbg!(games_missed.len());
+    dbg!(games_returned.len());
+
+    good_games.extend(games_returned);
+    bad_games.extend(games_missed);
+
+    // stored_pbp.extend(result);
+
+    // let good_games: BTreeSet<u32> = stored_pbp.iter().map(|game| game.game_pk).collect();
+
+
+    let games_processed = GamesProcessed {
+        good: good_games,
+        bad: bad_games,
+    };
+
+    let json = serde_json::to_string(&games_processed).unwrap();
+    std::fs::write(r#"F:\Baseball\games_processed.json"#, json).unwrap();
+
+    println!("Writing to CSV...");
+    crate::cache::append_play_by_play(&result);
+    println!("Added {} records.", result.len());
 
 }
 

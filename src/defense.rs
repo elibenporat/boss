@@ -19,7 +19,7 @@ pub struct Defense {
     pub player_name: Option<String>,
     pub position: Pos,
     pub batter_bats: crate::play_by_play::SideCode,
-    pub batter_bats_desc: crate::play_by_play::SideDescription,
+    pub batter_bats_desc: Option<crate::play_by_play::SideDescription>,
     pub batter: u32,
     pub batter_name: String,
     pub pitcher: u32,

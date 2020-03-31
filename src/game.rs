@@ -97,7 +97,7 @@ pub struct Pitch {
     pub pitcher_parent_team_id: u32,
     pub pitcher_parent_team_name: String,
     pub pitcher_throws: SideCode,
-    pub pitcher_throws_desc: SideDescription,
+    pub pitcher_throws_desc: Option<SideDescription>,
     pub pitcher_name: String,
     pub pitcher_dob: String,
     pub pitcher_mlb_debut_date: String,
@@ -143,7 +143,7 @@ pub struct Pitch {
 
 
     pub batter_bats: SideCode,
-    pub batter_bats_desc: SideDescription,
+    pub batter_bats_desc: Option<SideDescription>,
     pub batter_stands: Option<BatSideCode>,
     pub batter_stands_desc: Option<BatSideDescription>,
     pub batter_pos: Pos,
@@ -209,10 +209,11 @@ pub struct Pitch {
     pub pitch_type_desc: Option<PitchTypeDescription>,
 
     //1B, 2B, 3B, HR, strikeout, walk for easy summing in analytical tools
-    pub in_play_1b: u8,
-    pub in_play_2b: u8,
-    pub in_play_3b: u8,
-    pub in_play_hr: u8,
+    pub in_play_result: Option<Event>,
+    pub in_play_1b: Option<u8>,
+    pub in_play_2b: Option<u8>,
+    pub in_play_3b: Option<u8>,
+    pub in_play_hr: Option<u8>,
     pub strikeout: u8,
     pub walk: u8,
 
@@ -549,12 +550,12 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
             };
 
             let batter_age = match batter_details.birth_date {
-                Some (age) => Some(age - sched_meta.game_date),
+                Some (age) => Some(sched_meta.game_date - age),
                 None => None,
             };
 
             let pitcher_age = match pitcher_details.birth_date {
-                Some (age) => Some(age - sched_meta.game_date),
+                Some (age) => Some(sched_meta.game_date - age),
                 None => None,
             };
 
@@ -650,16 +651,28 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
                     PlayEventType::Pickoff => {
                         preceded_by_pickoff = true;
                     }
+                    PlayEventType::NoPitch => {
+                        // Do Nothing Here
+                    }
                     PlayEventType::Pitch => {
                         
                         pitch_num_game += 1;
                         pitch_num_plate_appearance += 1;
                         pitch_num_inning +=1;
 
-                        let mut in_play_1b = 0;
-                        let mut in_play_2b = 0;
-                        let mut in_play_3b = 0;
-                        let mut in_play_hr = 0;
+
+                        let (in_play_result, in_play_1b, in_play_2b, in_play_3b, in_play_hr) = match event.details.is_in_play.unwrap() {
+                            true => {
+                                let in_play_result = plate_app.result.plate_appearance_result.unwrap_or(Event::Other);
+                                let in_play_1b = if in_play_result == Event::Single {1} else {0};
+                                let in_play_2b = if in_play_result == Event::Double {1} else {0};
+                                let in_play_3b = if in_play_result == Event::Triple {1} else {0};
+                                let in_play_hr = if in_play_result == Event::HomeRun {1} else {0};
+
+                                (Some(in_play_result), Some(in_play_1b), Some(in_play_2b), Some(in_play_3b), Some(in_play_hr))
+                            },
+                            false => (None, None, None, None, None),
+                        };
             
                         let mut strikeout = 0;
                         let mut walk = 0;
@@ -724,7 +737,7 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
                         };
 
                         let (pitch_type_code, pitch_type_desc) = match event.details.pitch_type {
-                            Some (pitch_type) => (Some(pitch_type.code), Some(pitch_type.description)),
+                            Some (pitch_type) => (Some(pitch_type.code), pitch_type.description),
                             None => (None, None),
                         };
 
@@ -980,11 +993,11 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
                                 pitch_type_code,
                                 pitch_type_desc,
 
-                                // FIX THIS!!
                                 in_play_1b,
                                 in_play_2b,
                                 in_play_3b,
                                 in_play_hr,
+                                in_play_result,
                                 strikeout,
                                 walk,
 

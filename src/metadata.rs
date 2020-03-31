@@ -18,7 +18,7 @@ use crate::feed_live::FeedData;
 
 
 
-// #[derive(Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct VecMetaDataInputs {
     pub boxscore:   Vec<BoxScoreData>,
     pub venue:      Vec<VenueData>,

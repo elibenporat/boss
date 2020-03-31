@@ -43,6 +43,8 @@ pub (crate) enum PlayEventType  {
     Action,
     Pitch,
     Pickoff,
+    #[serde(alias="no_pitch")]
+    NoPitch,
 }
 
 #[derive(Debug, Deserialize)]
@@ -135,7 +137,7 @@ pub enum Hardness {
 #[serde(rename_all="camelCase")]
 pub struct PitchType {
   pub code: PitchTypeCode,
-  pub description: PitchTypeDescription,
+  pub description: Option<PitchTypeDescription>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -264,11 +266,11 @@ pub (crate) struct PlayEventDetails {
 #[derive(Debug, Deserialize)]
 pub(crate) struct PlateAppearanceData {
     #[serde(rename="type")]
-    result_type: Option<ResultType>,
+    pub(crate) result_type: Option<ResultType>,
     #[serde(rename="event")]
-    plate_appearance_result: Option<Event>,
+    pub(crate) plate_appearance_result: Option<Event>,
     #[serde(rename="eventType")]
-    plate_appearance_result_type: Option<EventType>,
+    pub(crate) plate_appearance_result_type: Option<EventType>,
     // #[serde(rename="description")]
     // plate_appearance_result_description: String,
 }
@@ -314,7 +316,7 @@ pub (crate) struct Player {
 #[derive(Debug, Deserialize, Serialize, Copy, Clone)]
 pub(crate) struct Side {
     code: SideCode,
-    description: SideDescription,
+    description: Option<SideDescription>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Copy, Clone)]
@@ -437,10 +439,10 @@ pub (crate) struct RunnerData {
 pub (crate) struct MatchupData {
   pub (crate) batter_id: u32,
   pub (crate) batter_bat_side_code: SideCode,
-  pub (crate) batter_bat_side_desc: SideDescription,
+  pub (crate) batter_bat_side_desc: Option<SideDescription>,
   pub (crate) pitcher_id: u32,
   pub (crate) pitcher_pitch_hand_code: SideCode,
-  pub (crate) pitcher_pitch_hand_desc: SideDescription,
+  pub (crate) pitcher_pitch_hand_desc: Option<SideDescription>,
 }
 
 /// Flatten the runner data out into a more efficient and readable structe without all the nesting. 
@@ -560,9 +562,8 @@ pub (crate) enum EventType {
 /// Event stores all the possible events. Wherever possible, we'll convert text
 /// into enums, avoiding lifetime issues and increasing memory efficiency. Serde does all the heavy lifting in the
 /// background. TODO: use this for both the "event" and "eventType" fields to see where there are differences
-#[derive(Debug, Deserialize)]
-#[serde(field_identifier)]
-pub (crate) enum Event {
+#[derive(Debug, Deserialize, PartialEq, Eq, Serialize, Copy, Clone)]
+pub enum Event {
     #[serde(alias = "Game Advisory")]
     GameAdvisory,
     #[serde(alias = "Ejection")]
