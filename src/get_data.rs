@@ -140,10 +140,10 @@ pub fn get_meta_data(years: Vec<u16>, sport_ids: Vec<u32>) -> VecMetaDataInputs 
 
     dbg!(teams_data.len());
     
-    // for _ in 0.. 550 {
-    // let boxscore_data = get_boxscore_data(&schedule_data);
-    // dbg! (boxscore_data.len());
-    // }
+    for _ in 0.. 550 {
+    let boxscore_data = get_boxscore_data(&schedule_data);
+    dbg! (boxscore_data.len());
+    }
 
     let boxscore_data = get_boxscore_data(&schedule_data);
     dbg! (boxscore_data.len());

@@ -512,21 +512,7 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
             
             // let runner_data = plate_app.runners;
 
-            // First, we need to de-duplicate the runner data. We'll take the last record for each runner
-            // and assume that it's the correct one. This may or may not be accurate. Based on the source code in std,
-            // I think this this will always take the last one, but not positive.
-            let runner_data: HashMap<u32, RunnerData> =
-                plate_app.runners.into_iter()
-                    .map(|r| (r.runner_id, r))
-                    .collect();
 
-                    
-            // We update our runner state with the new runner data. This will overwrite the old values, but more
-            // importantly, it will keep all the old values. For outs, we'll use just the runner_data, for base value
-            // we'll use our runner_state.
-            for runner in runner_data.values() {
-                runner_state.insert(runner.runner_id, *runner);
-            };
 
             let batter_details = player_meta.get(&batter).unwrap().clone();
             let pitcher_details = player_meta.get(&pitcher).unwrap().clone();
@@ -616,6 +602,23 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
             //Some plays don't have any events, but have runner events. We'll update those here in that case
             //Still have an issue if this is a run scoring event, don't know how to fix that yet
             if plate_app.play_events.len() == 0 {
+                // First, we need to de-duplicate the runner data. We'll take the last record for each runner
+                // and assume that it's the correct one. This may or may not be accurate. Based on the source code in std,
+                // I think this this will always take the last one, but not positive.
+                let runner_data: HashMap<u32, RunnerData> =
+                    plate_app.runners.clone().into_iter()
+                    .filter(|r| r.play_index == -1)    
+                    .map(|r| (r.runner_id, r))
+                    .collect();
+                
+                // We update our runner state with the new runner data. This will overwrite the old values, but more
+                // importantly, it will keep all the old values. For outs, we'll use just the runner_data, for base value
+                // we'll use our runner_state.
+                for runner in runner_data.values() {
+                    runner_state.insert(runner.runner_id, *runner);
+                };
+
+
                 re_288_batter_responsible = false;
                 base_value_end = runner_state.values()
                 .map (|r| r.end_base_value)
@@ -628,6 +631,24 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
             }
 
             for event in plate_app.play_events {
+
+
+                // First, we need to de-duplicate the runner data. We'll take the last record for each runner
+                // and assume that it's the correct one. This may or may not be accurate. Based on the source code in std,
+                // I think this this will always take the last one, but not positive.
+                let runner_data: HashMap<u32, RunnerData> =
+                    plate_app.runners.clone().into_iter()
+                    .filter(|r| r.play_index == event.index as i8)    
+                    .map(|r| (r.runner_id, r))
+                    .collect();
+                
+                // We update our runner state with the new runner data. This will overwrite the old values, but more
+                // importantly, it will keep all the old values. For outs, we'll use just the runner_data, for base value
+                // we'll use our runner_state.
+                for runner in runner_data.values() {
+                    runner_state.insert(runner.runner_id, *runner);
+                };
+
 
                 // Our runner state is persistent, so we don't need to match it to the specific pitch.
                 base_value_end = runner_state.values()
@@ -694,11 +715,10 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
                                 match event.base {
                                     Some (base) => {
                                         runner_state = runner_state.values()
-                                            .filter (|runner| runner.end_base_value == 2u8.pow(base as u32 -1))
+                                            .filter (|runner| runner.end_base_value != 2u8.pow(base as u32 -1))
                                             .map (|runner| (runner.runner_id, *runner))
                                             .collect();
-                                    }
-                                    ,
+                                    },
                                     _ => {}
                                 }
 
