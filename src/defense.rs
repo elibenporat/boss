@@ -71,7 +71,7 @@ impl From<Pitch> for Vec<Defense> {
                     Defense {
                         game_date: pitch.game_date.clone(),
                         game_type: pitch.game_type,
-                        player: pitch.catcher,
+                        player: pitch.catcher_id,
                         player_name: pitch.catcher_name.clone(),
                         position: Pos::Catcher,
                         batter_bats,

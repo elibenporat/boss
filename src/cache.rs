@@ -95,10 +95,20 @@ pub (crate) fn write_play_by_play (pitches: &Vec<game::Pitch>) {
 
 pub (crate) fn append_play_by_play (pitches: &Vec<game::Pitch>) {
 
-    let file = std::fs::OpenOptions::new().append(true).open(PLAY_BY_PLAY).unwrap();
+    // Check if the file exists to determine if we need headers and if we should create a new file
+
+    let exists = match std::fs::File::open(PLAY_BY_PLAY) {
+        Err (_) => false,
+        Ok (_) => true,
+    };
+
+    let file = match exists {
+        true => std::fs::OpenOptions::new().append(true).open(PLAY_BY_PLAY).unwrap(),
+        false => std::fs::OpenOptions::new().create(true).write(true).open(PLAY_BY_PLAY).unwrap()
+    };
 
     let mut csv_writer = WriterBuilder::new()
-                            .has_headers(false)
+                            .has_headers(!exists)
                             .from_writer(file);
 
     for pitch in pitches {

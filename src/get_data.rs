@@ -36,7 +36,7 @@ pub fn get_everything() {
     let schedule = meta.schedule.clone();
     let meta_data = meta.into();
 
-    for _ in 0 .. 50 {
+    for _ in 0 .. 1 {
         get_play_by_play(schedule.clone(), &meta_data);
     }
 }
@@ -50,8 +50,13 @@ pub fn get_play_by_play (schedule: Vec<GameMetaData>, meta_data: &MetaData) {
         bad: BTreeSet<u32>,
     }
 
-    let json = std::fs::read_to_string(r#"F:\Baseball\games_processed.json"#).unwrap();
-    let games_processed: GamesProcessed = serde_json::from_str(&json).unwrap();
+    let json = std::fs::read_to_string(r#"F:\Baseball\games_processed.json"#).unwrap_or("".to_string());
+    let games_processed: GamesProcessed = serde_json::from_str(&json).unwrap_or(
+        GamesProcessed {
+            good: BTreeSet::new(),
+            bad: BTreeSet::new(),
+        }
+    );
 
     // let mut stored_pbp = load_play_by_play();
     // let games_loaded: BTreeSet<u32> = stored_pbp.iter().map(|pitch| pitch.game_pk).collect();
@@ -61,6 +66,7 @@ pub fn get_play_by_play (schedule: Vec<GameMetaData>, meta_data: &MetaData) {
     let mut good_games: BTreeSet<u32> = games_processed.good;
     let mut bad_games: BTreeSet<u32> = games_processed.bad;
 
+    //For some reason, we have duplicate game_pks in our schedule, so we make it a set to get rid of that problem.
     let pbp_urls: BTreeSet<(u32, String)> = schedule.iter()
         .filter (|game| game.game_status == AbstractGameState::Final)
         .filter (|game| !good_games.contains(&game.game_pk))
@@ -69,8 +75,8 @@ pub fn get_play_by_play (schedule: Vec<GameMetaData>, meta_data: &MetaData) {
         .take(5_000)
         .collect()
         ;
-        
-    // we keep track of the requested games. Any that didn't return a result we'll package as a "bad" game
+    
+     // we keep track of the requested games. Any that didn't return a result we'll package as a "bad" game
     let requested_games: BTreeSet<u32> = pbp_urls.iter().map(|game| game.0).collect();
     dbg!(requested_games.len());
 
@@ -134,9 +140,13 @@ pub fn get_meta_data(years: Vec<u16>, sport_ids: Vec<u32>) -> VecMetaDataInputs 
 
     dbg!(teams_data.len());
     
+    // for _ in 0.. 550 {
+    // let boxscore_data = get_boxscore_data(&schedule_data);
+    // dbg! (boxscore_data.len());
+    // }
+
     let boxscore_data = get_boxscore_data(&schedule_data);
     dbg! (boxscore_data.len());
-
 
     let coaches_data = get_coach_data(&schedule_data);
     dbg!(coaches_data.len());

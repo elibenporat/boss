@@ -81,6 +81,7 @@ pub struct Defense {
   pub right_field: Option<u32>,
   pub center_field: Option<u32>,
   pub pitcher: Option<u32>,
+  pub designated_hitter: Option<u32>,
 }
 
 impl From <Vec<Player>> for Defense {
@@ -119,15 +120,16 @@ impl From <Vec<Player>> for Defense {
       .collect();
     
     Defense {
-      catcher:      get_player(Pos::Catcher,         &players_00, &players_01),
-      first_base:   get_player(Pos::FirstBase,       &players_00, &players_01),
-      second_base:  get_player(Pos::SecondBase,      &players_00, &players_01),
-      short_stop:   get_player(Pos::ShortStop,       &players_00, &players_01),
-      third_base:   get_player(Pos::ThirdBase,       &players_00, &players_01),
-      left_field:   get_player(Pos::LeftField,       &players_00, &players_01),
-      right_field:  get_player(Pos::RightField,      &players_00, &players_01),
-      center_field: get_player(Pos::CenterField,     &players_00, &players_01),
-      pitcher:      get_player(Pos::StartingPitcher, &players_00, &players_01),
+      catcher:             get_player(Pos::Catcher,         &players_00, &players_01),
+      first_base:          get_player(Pos::FirstBase,       &players_00, &players_01),
+      second_base:         get_player(Pos::SecondBase,      &players_00, &players_01),
+      short_stop:          get_player(Pos::ShortStop,       &players_00, &players_01),
+      third_base:          get_player(Pos::ThirdBase,       &players_00, &players_01),
+      left_field:          get_player(Pos::LeftField,       &players_00, &players_01),
+      right_field:         get_player(Pos::RightField,      &players_00, &players_01),
+      center_field:        get_player(Pos::CenterField,     &players_00, &players_01),
+      pitcher:             get_player(Pos::StartingPitcher, &players_00, &players_01),
+      designated_hitter:   get_player(Pos::DesignatedHitter, &players_00, &players_01),
     }
   }
 }
@@ -428,16 +430,15 @@ impl From<PlayerID> for Player {
     };
 
     let pos = match player.all_positions {
-      None => Pos::Bench,
       Some (position) => position[0].abbreviation, 
+      None => player.position.abbreviation,
     };
-
 
     let position = match pos {
       Pos::Pitcher => {
         if sp {Pos::StartingPitcher} else {Pos::ReliefPitcher}
       }
-      _ => player.position.abbreviation, 
+      _ => pos, 
     };
 
     Player {
@@ -516,6 +517,8 @@ pub enum Pos {
   CenterField,
   #[serde(rename="P")]
   Pitcher,
+  #[serde(rename="DH")]
+  DesignatedHitter,
   StartingPitcher,
   ReliefPitcher,
   #[serde(other)]
@@ -537,6 +540,7 @@ impl From<Pos> for String {
       Pos::StartingPitcher => "SP",
       Pos::ReliefPitcher => "P",
       Pos::Bench => "Bench",
+      Pos::DesignatedHitter => "DH"
     }.to_string()
   }
 }

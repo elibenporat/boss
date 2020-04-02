@@ -51,6 +51,19 @@ pub struct Team {
     // pub instagram: String,
 }
 
+impl Default for Team {
+    fn default() -> Self {
+        Team {
+            id: 0,
+            sport_id: 1,
+            team_city_name: "".to_string(),
+            team_name: "".to_string(),
+            division_name: None,
+            league_name: None,
+        }
+    }
+}
+
 impl From<TeamDeserialize> for Team {
     fn from (team: TeamDeserialize) -> Team {
         

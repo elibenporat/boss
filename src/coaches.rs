@@ -24,6 +24,24 @@ pub struct CoachData {
   pub away_coaches: Coaches,
 }
 
+impl Default for CoachData {
+  fn default() -> Self {
+    CoachData {
+      game_pk: 0,
+      home_coaches: Coaches {
+        batting_coach: None,
+        pitching_coach: None,
+        manager: None,
+      },
+      away_coaches: Coaches {
+        batting_coach: None,
+        pitching_coach: None,
+        manager: None,
+      },
+    }
+  }
+}
+
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Coaches {
     pub batting_coach: Option<u32>,

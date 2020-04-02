@@ -201,6 +201,7 @@ pub enum PitchTypeDescription {
 #[serde(rename_all="camelCase")]
 pub (crate) struct PlayEvent {
     pub (crate) details: PlayEventDetails,
+    pub (crate) count: Count,
     pub (crate) is_pitch: bool,
     // This index is used to find the matching runner events
     pub (crate) index: u8,
@@ -210,8 +211,15 @@ pub (crate) struct PlayEvent {
     pub (crate) pitch_data: Option<PitchDataParse>,
     pub (crate) hit_data: Option<HitData>,
     pub (crate) player: Option<PlayerID>,
+    pub (crate) base: Option<u8>,
     pub (crate) position: Option<crate::boxscore::Position>,
     pub (crate) start_time: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub (crate) struct Count {
+    pub (crate) balls: Option<u8>,
+    pub (crate) strikes: Option<u8>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -418,7 +426,7 @@ impl From<Base> for BaseValue {
 /// RunnerData captures all the runner movement for any pitch or action. We ignore the "movementReason" field since
 /// we can get better info from the Event/EventType fields. At this point, the base states are flattened and converted
 /// to base values.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Copy, Clone)]
 #[serde(from="Runner")]
 pub (crate) struct RunnerData {
     pub (crate) runner_id: u32,
@@ -426,7 +434,7 @@ pub (crate) struct RunnerData {
     pub (crate) end_base_value: u8,
     pub (crate) runs: u8,
     pub (crate) event: Event,
-    pub (crate) event_type: EventType,
+    // pub (crate) event_type: EventType,
     pub (crate) rbi: bool,
     pub (crate) earned: bool,
     pub (crate) play_index: i8,
@@ -458,7 +466,7 @@ impl From <Runner> for RunnerData {
             end_base_value: runner.movement.end.value,
             runs: runner.movement.end.runs,
             event: runner.details.event,
-            event_type: runner.details.event_type,
+            // event_type: runner.details.event_type,
             rbi: runner.details.rbi,
             earned: runner.details.earned,
             play_index: runner.details.play_index,
@@ -645,7 +653,7 @@ pub enum Event {
     DefensiveSubstitution,
     #[serde(alias="Defensive Switch", alias="defensive_switch")]
     DefensiveSwitch,
-    #[serde(alias="Offensive Substitution", alias="offensive_substitution")]
+    #[serde(alias="Offensive Substitution", alias="offensive_substitution", alias="Offensive Sub")]
     OffensiveSubstitution,
     #[serde(alias="Defensive Indiff", alias="Defensive Indifference")]
     DefensiveIndifference,

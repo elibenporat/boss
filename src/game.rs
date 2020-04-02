@@ -5,13 +5,13 @@
 
 // use crate::metadata::MetaData;
 use crate::players::{Player, BatSideCode, BatSideDescription};
-use crate::play_by_play::{Code, PlayEventType, Event, Trajectory, HalfInning, Hardness, SideCode, SideDescription, PitchTypeCode, PitchTypeDescription, AllPlays};
+use crate::play_by_play::{RunnerData, Code, PlayEventType, Event, Trajectory, HalfInning, Hardness, SideCode, SideDescription, PitchTypeCode, PitchTypeDescription, AllPlays};
 use crate::boxscore::{Pos, WeatherCondition, WindDirection, BoxScoreData};
 use crate::schedule::{GameType, GameTypeDescription, AbstractGameState, GameMetaData};
-use crate::venues::{SurfaceType, RoofType, TimeZone, VenueData, VenueXY};
+use crate::venues::{SurfaceType, RoofType, TimeZone, VenueData, VenueXY, Venue};
 use crate::coaches::CoachData;
-use crate::feed_live::{FeedData};
-use crate::team::{TeamData};
+use crate::feed_live::FeedData;
+use crate::team::{TeamData, Team};
 use crate::metadata::MetaData;
 use crate::utils::Date;
 use serde::{Serialize, Deserialize};
@@ -36,26 +36,26 @@ pub struct Pitch {
     pub num_plate_appearance: u8,
     pub num_inning: u8,
 
-    // pub time: Option<String>,
+    pub start_time: Option<String>,
 
     //Defense on the pitch. For now, use the starting lineups for everything. Update later to include subs
     //In practice, the positions should never be None. Its possible a boxscore won't be available for a game,
     //in which case we'd have no defense data. 
-    pub catcher: Option<u32>,
+    pub catcher_id: Option<u32>,
     pub catcher_name: Option<String>,
-    pub first_base: Option<u32>,
+    pub first_base_id: Option<u32>,
     pub first_base_name: Option<String>,
-    pub second_base: Option<u32>,
+    pub second_base_id: Option<u32>,
     pub second_base_name: Option<String>,
-    pub short_stop: Option<u32>,
+    pub short_stop_id: Option<u32>,
     pub short_stop_name: Option<String>,
-    pub third_base: Option<u32>,
+    pub third_base_id: Option<u32>,
     pub third_base_name: Option<String>,
-    pub left_field: Option<u32>,
+    pub left_field_id: Option<u32>,
     pub left_field_name: Option<String>,
-    pub center_field: Option<u32>,
+    pub center_field_id: Option<u32>,
     pub center_field_name: Option<String>,
-    pub right_field: Option<u32>,
+    pub right_field_id: Option<u32>,
     pub right_field_name: Option<String>,
 
     //Umpires and coaches
@@ -147,6 +147,7 @@ pub struct Pitch {
     pub batter_stands: Option<BatSideCode>,
     pub batter_stands_desc: Option<BatSideDescription>,
     pub batter_pos: Pos,
+    pub batter_batting_order: Option<u16>,
     pub strike_zone_bottom: f32,
     pub strike_zone_top: f32,
     
@@ -382,43 +383,58 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
         let sched_meta = data.meta_data.schedule.get(&game_pk).unwrap();
         let year: u16 = sched_meta.game_date.year;
 
-        // We check here to make sure the game has complete metadata before processing. We will
-        // need to handle games that are missing metadata, ideally with Default impls.
-        
+        // We check here to make sure the game has a boxscore before processing. If we
+        // don't have a boxscore, we'll be missing a LOT of critical information, such as the defense.
+        // At some point, we may want to include games with no boxscore data, but for now we'll exclude them.
+        // We handle all other possible missing metadata through Default impls, or explicitly in the code below.
         if !data.meta_data.boxscore.contains_key(&game_pk) {return vec![]};
         let box_meta = data.meta_data.boxscore.get(&game_pk).unwrap();
 
-        let has_all_metadata: bool = 
-            data.meta_data.schedule.contains_key(&game_pk) &&
-            data.meta_data.venue.contains_key(&(sched_meta.game_venue_id, year)) &&
-            data.meta_data.venue_x_y.contains_key (&sched_meta.game_venue_id) &&
-            data.meta_data.coaches.contains_key(&game_pk) &&
-            data.meta_data.feed.contains_key(&game_pk) &&
-            data.meta_data.teams.contains_key(&(box_meta.home_team_id, year)) &&
-            data.meta_data.teams.contains_key(&(box_meta.away_team_id, year)) &&
-            data.meta_data.teams.contains_key(&(box_meta.home_parent_team_id, year)) &&
-            data.meta_data.teams.contains_key(&(box_meta.away_parent_team_id, year))
-        ;
+        // Handle the case where we don't have venue metadata
+        let venue_meta = match data.meta_data.venue.get(&(sched_meta.game_venue_id, year)) {
+            Some (venue) => venue.to_owned(),
+            None => Venue::default(),
+        };
 
-        if !has_all_metadata {return vec![]};
+        //Handle the case where we don't have coach metadata
+        let coaches = match data.meta_data.coaches.get(&game_pk) {
+            Some (coaches) => coaches.to_owned(),
+            None => CoachData::default(),
+        };
 
-        let venue_meta = data.meta_data.venue.get(&(sched_meta.game_venue_id, year)).unwrap();
-        let venue_x_y = data.meta_data.venue_x_y.get(&sched_meta.game_venue_id);
-        let player_meta = data.meta_data.players.clone();
-        let coaches = data.meta_data.coaches.get(&game_pk).unwrap();
+        //We handle the case where we don't have scorer/datacaster metadata later
         let scorer_meta = data.meta_data.feed.get(&game_pk);
-        // let re_288_default = data.meta_data.re_288_default;
-        
-        let home_team = data.meta_data.teams.get(&(box_meta.home_team_id, year)).unwrap().clone();
-        let away_team = data.meta_data.teams.get(&(box_meta.away_team_id, year)).unwrap().clone();
-        let home_parent_team = data.meta_data.teams.get(&(box_meta.home_parent_team_id, year)).unwrap().clone();
-        let away_parent_team = data.meta_data.teams.get(&(box_meta.away_parent_team_id, year)).unwrap().clone();
 
+        // We handle the None case later
+        let venue_x_y = data.meta_data.venue_x_y.get(&sched_meta.game_venue_id);
+        
+        let home_team = match data.meta_data.teams.get(&(box_meta.home_team_id, year)) {
+            Some (team) => team.to_owned(),
+            None => Team::default(),
+        };
+        
+        let away_team = match data.meta_data.teams.get(&(box_meta.away_team_id, year)) {
+            Some (team) => team.to_owned(),
+            None => Team::default(),
+        };
+        
+        let home_parent_team = match data.meta_data.teams.get(&(box_meta.home_parent_team_id, year)) {
+            Some (team) => team.to_owned(),
+            None => Team::default(),
+        };
+        
+        let away_parent_team = match data.meta_data.teams.get(&(box_meta.away_parent_team_id, year)) {
+            Some (team) => team.to_owned(),
+            None => Team::default(),
+        };
+               
+        let player_meta = data.meta_data.players.clone();
+        
         let mut home_defense = box_meta.home_defense;
         let mut away_defense = box_meta.away_defense;
 
-        let home_players: HashMap<u32, Pos> = box_meta.home_players.iter().map(|p| (p.id, p.position)).collect();
-        let away_players: HashMap<u32, Pos> = box_meta.away_players.iter().map(|p| (p.id, p.position)).collect();
+        let home_players: HashMap<u32, Option<u16>> = box_meta.home_players.iter().map(|p| (p.id, p.batting_order)).collect();
+        let away_players: HashMap<u32, Option<u16>> = box_meta.away_players.iter().map(|p| (p.id, p.batting_order)).collect();
 
         let hp_umpire_id = box_meta.hp_umpire_id;
         let hp_details = get_ump(hp_umpire_id, sched_meta.game_date, &player_meta);
@@ -451,6 +467,11 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
         let mut pitch_num_inning = 0u8;
         let mut pitch_num_game = 0u16;
 
+
+        // We'll keep track of all runners in a vec, which we'll update after every plate appearance and
+        // clear at the end of each half-inning. 
+        let mut runner_state: HashMap<u32, RunnerData> = HashMap::new();
+
         for plate_app in plays {
             // Set the initial state for the half inning if the half inning has changed since the last plate appearance
             
@@ -468,23 +489,44 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
             let pitcher_throws = plate_app.matchup.pitcher_pitch_hand_code;
             let pitcher_throws_desc = plate_app.matchup.pitcher_pitch_hand_desc;
 
-            let runner_data = plate_app.runners;
-                        
-            // Balls and Strike are always reset to 0
+            
+            
+            // Balls and Strike are always reset to 0 at the beginning of each plate appearance
             let mut balls_start = 0u8;
             let mut balls_end = 0u8;
             let mut strikes_start = 0u8;
             let mut strikes_end = 0u8;
-
+            
+            //If we see a different half-inning reset the base/out state as well as the pitch_num_inning
             if half_inning != previous_half_inning {
                 base_value_start = 0;
                 base_value_end = 0;
                 outs_start = 0;
                 outs_end = 0;
                 pitch_num_inning = 0;
+                runner_state.drain();
             }
+            
+            // Each plate appearance may only update a subset of active runners. We'll need to keep a
+            // state machine to keep track of all active runners. Also, 
+            
+            // let runner_data = plate_app.runners;
 
-            //If we see a different half-inning reset the base/out state as well
+            // First, we need to de-duplicate the runner data. We'll take the last record for each runner
+            // and assume that it's the correct one. This may or may not be accurate. Based on the source code in std,
+            // I think this this will always take the last one, but not positive.
+            let runner_data: HashMap<u32, RunnerData> =
+                plate_app.runners.into_iter()
+                    .map(|r| (r.runner_id, r))
+                    .collect();
+
+                    
+            // We update our runner state with the new runner data. This will overwrite the old values, but more
+            // importantly, it will keep all the old values. For outs, we'll use just the runner_data, for base value
+            // we'll use our runner_state.
+            for runner in runner_data.values() {
+                runner_state.insert(runner.runner_id, *runner);
+            };
 
             let batter_details = player_meta.get(&batter).unwrap().clone();
             let pitcher_details = player_meta.get(&pitcher).unwrap().clone();
@@ -574,72 +616,96 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
             //Some plays don't have any events, but have runner events. We'll update those here in that case
             //Still have an issue if this is a run scoring event, don't know how to fix that yet
             if plate_app.play_events.len() == 0 {
-                base_value_end = runner_data.iter()
-                .filter(|i| i.play_index == -1)
+                re_288_batter_responsible = false;
+                base_value_end = runner_state.values()
                 .map (|r| r.end_base_value)
                 .sum();
             
-                outs_end = outs_start + runner_data.iter()
-                .filter(|i| i.play_index == -1)
+                outs_end = outs_start + runner_data.values()
+                .filter(|v| v.play_index == -1)
                 .map (|r| r.outs)
                 .sum::<u8>();
             }
 
             for event in plate_app.play_events {
 
-                base_value_end = runner_data.iter()
-                                                .filter(|i| i.play_index == event.index as i8)
+                // Our runner state is persistent, so we don't need to match it to the specific pitch.
+                base_value_end = runner_state.values()
                                                 .map (|r| r.end_base_value)
                                                 .sum();
                 // PROBLEM: If a run scores on a non-pitch event (or base state changes) we aren't capturing that.
-                let runs_scored = runner_data.iter()
-                                                .filter(|i| i.play_index == event.index as i8)
+                // Runs and outs are only relevant for that pitch, so we match up the pitch specific event data
+                let runs_scored = runner_data.values()
+                                                .filter(|v| v.play_index == event.index as i8)
                                                 .map (|r| r.runs)
                                                 .sum();
 
-                outs_end = outs_start + runner_data.iter()
-                                                .filter(|i| i.play_index == event.index as i8)
+                outs_end = outs_start + runner_data.values()
+                                                .filter(|v| v.play_index == event.index as i8)
                                                 .map (|r| r.outs)
                                                 .sum::<u8>();
 
 
-                if runner_data.len() > 0 {
-                    if runner_data[0].play_index == -1 {base_value_end = runner_data[0].end_base_value}
-                }
-;
+                // if runner_data.len() > 0 {
+                //     if runner_data[0].play_index == -1 {base_value_end = runner_data[0].end_base_value}
+                // }
+                // ;
 
                 match event.play_event_type {
                     PlayEventType::Action => {
                         //Update the defense here.
                         
-                        match event.event {
+                        match event.details.event {
                             // Substitution will have one entry, while switch will have at least 2. We don't
                             // care who the player being switched out is, since we just overwrite the position. It also
                             // doesn't matter who is subbing in for who, the position that that player moves to is all
-                            // we care about
+                            // we care about, since if a player is moving, he'll have another entry.
                             Some(Event::DefensiveSubstitution) | Some(Event::DefensiveSwitch) => {
-                                // We should have player and position info for every defensive switch
+                                // We should have player and position info for every defensive switch, however,
+                                // this will panic for DHs, who have no position. so we need to check for that.
+                                // If we don't have a position for the batter, we just assume they're a DH.
                                 let player_id = event.player.unwrap().id;
-                                let position = event.position.unwrap().abbreviation;
-                                
+                                let position = match event.position {
+                                    Some (pos) => pos.abbreviation,
+                                    _ => Pos::DesignatedHitter,
+                                };
+                                                                
                                 match position {
-                                    Pos::Catcher =>     {defense.catcher =      Some(player_id)},
-                                    Pos::FirstBase =>   {defense.first_base =   Some(player_id)},
-                                    Pos::SecondBase =>  {defense.second_base =  Some(player_id)},
-                                    Pos::ShortStop =>   {defense.short_stop =   Some(player_id)},
-                                    Pos::ThirdBase =>   {defense.third_base =   Some(player_id)},
-                                    Pos::LeftField =>   {defense.left_field =   Some(player_id)},
-                                    Pos::RightField =>  {defense.right_field =  Some(player_id)},
-                                    Pos::CenterField => {defense.center_field = Some(player_id)},
+                                    Pos::Catcher =>          {defense.catcher =           Some(player_id)},
+                                    Pos::FirstBase =>        {defense.first_base =        Some(player_id)},
+                                    Pos::SecondBase =>       {defense.second_base =       Some(player_id)},
+                                    Pos::ShortStop =>        {defense.short_stop =        Some(player_id)},
+                                    Pos::ThirdBase =>        {defense.third_base =        Some(player_id)},
+                                    Pos::LeftField =>        {defense.left_field =        Some(player_id)},
+                                    Pos::RightField =>       {defense.right_field =       Some(player_id)},
+                                    Pos::CenterField =>      {defense.center_field =      Some(player_id)},
+                                    Pos::DesignatedHitter => {defense.designated_hitter = Some(player_id)},
                                     _ => {},
                                 };
                                 
-                                // Update the home_defense and or away_defense since we reset the defense each half inning.
-                                if half_inning == HalfInning::Top    {home_defense = defense};
-                                if half_inning == HalfInning::Bottom {away_defense = defense};
-
+                                // Update the home_defense and or away_defense since we switch the defense each half inning.
+                                if half_inning == HalfInning::Top    {home_defense = defense;};
+                                if half_inning == HalfInning::Bottom {away_defense = defense;};
 
                             },
+                            //If we have an offensive substitution and a relevant base, we need to update our runner_state
+                            Some(Event::OffensiveSubstitution) => {
+
+                                match event.base {
+                                    Some (base) => {
+                                        runner_state = runner_state.values()
+                                            .filter (|runner| runner.end_base_value == 2u8.pow(base as u32 -1))
+                                            .map (|runner| (runner.runner_id, *runner))
+                                            .collect();
+                                    }
+                                    ,
+                                    _ => {}
+                                }
+
+
+                            }
+
+
                             // Do nothing for all other event types for now, except mark the batter as not responsible
                             // I'm not entirely sure if this works properly yet, but we are ignoring all base/out state changes
                             // that don't result from a ball/strike/foul/in-play. We also have no way of taking away responsibility
@@ -660,6 +726,25 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
                         pitch_num_plate_appearance += 1;
                         pitch_num_inning +=1;
 
+                        // We need the defense that's off the field to find the batter's current position in the game
+                        let defense_to_use_for_batter_pos = match half_inning {
+                            HalfInning::Top => away_defense,
+                            HalfInning::Bottom => home_defense,
+                        };
+
+                        let batter_pos = {
+                                 if defense_to_use_for_batter_pos.catcher ==           Some(batter)  {Pos::Catcher}
+                            else if defense_to_use_for_batter_pos.first_base ==        Some(batter)  {Pos::FirstBase}
+                            else if defense_to_use_for_batter_pos.second_base ==       Some(batter)  {Pos::SecondBase}
+                            else if defense_to_use_for_batter_pos.short_stop ==        Some(batter)  {Pos::ShortStop}
+                            else if defense_to_use_for_batter_pos.third_base ==        Some(batter)  {Pos::ThirdBase}
+                            else if defense_to_use_for_batter_pos.left_field ==        Some(batter)  {Pos::LeftField}
+                            else if defense_to_use_for_batter_pos.right_field ==       Some(batter)  {Pos::RightField}
+                            else if defense_to_use_for_batter_pos.center_field ==      Some(batter)  {Pos::CenterField}
+                            else if defense_to_use_for_batter_pos.pitcher ==           Some(batter)  {Pos::Pitcher}
+                            else if defense_to_use_for_batter_pos.designated_hitter == Some(batter)  {Pos::DesignatedHitter}
+                            else {Pos::Bench}
+                        };
 
                         let (in_play_result, in_play_1b, in_play_2b, in_play_3b, in_play_hr) = match event.details.is_in_play.unwrap() {
                             true => {
@@ -684,28 +769,20 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
                         match event.details.code.unwrap_or(Code::Other) {
                             // Ball or Ball in Dirt
                             Code::BD | Code::B => {
-                                balls_end = balls_start + 1;
-                                if balls_end == 4 {walk = 1};
+                                // balls_end = balls_start + 1;
+                                
                                 swing = 0;
                             },
                             
                             // Called Strike
                             Code::C => {
-                                strikes_end = strikes_start +1;
-                                if strikes_end == 3 {
-                                    // outs_end += 1;
-                                    strikeout = 1;
-                                };
+                                // strikes_end = strikes_start +1;
                                 swing = 0;
                             },
                             
                             //Swinging Strike or Foul Bunt
                             Code::S | Code::L => {
-                                strikes_end = strikes_start + 1;
-                                if strikes_end == 3 {
-                                    // outs_end += 1;
-                                    strikeout = 1;
-                                };
+                                // strikes_end = strikes_start + 1;
                                 swing = 1;
                                 swing_and_miss = Some(1);
                             },
@@ -713,7 +790,7 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
                             //Foul Ball
                             Code::F => {
                                 foul = 1;
-                                if strikes_start < 2 {strikes_end = strikes_start + 1};
+                                // if strikes_start < 2 {strikes_end = strikes_start + 1};
                                 swing = 1;
                             },
 
@@ -727,6 +804,16 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
                             _ => {},
                         };
                         
+                        // There are in some cases extra pitches, so we always correct to the count given
+                        // in the data. This *might* lead to double counting of walks and strikeouts, if this pitch
+                        // is duplicated in the data. Should check for this at some point. 
+                        let balls_end = event.count.balls.unwrap();
+                        let strikes_end = event.count.strikes.unwrap();
+
+                        if strikes_end == 3 {strikeout = 1;};
+                        if balls_end == 4 {walk = 1};
+
+
                         //if our event type is a pitch, we can safely unwrap the pitch_data
                         let pitch_data = event.pitch_data.unwrap();
                         
@@ -798,16 +885,16 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
                                 num_plate_appearance,
                                 num_inning,
 
-                                // time: event.start_time,
+                                start_time: event.start_time,
 
-                                catcher: defense.catcher,
-                                first_base: defense.first_base,
-                                second_base: defense.second_base,
-                                short_stop: defense.short_stop,
-                                third_base: defense.third_base,
-                                left_field: defense.left_field,
-                                center_field: defense.center_field,
-                                right_field: defense.right_field,
+                                catcher_id: defense.catcher,
+                                first_base_id: defense.first_base,
+                                second_base_id: defense.second_base,
+                                short_stop_id: defense.short_stop,
+                                third_base_id: defense.third_base,
+                                left_field_id: defense.left_field,
+                                center_field_id: defense.center_field,
+                                right_field_id: defense.right_field,
                                 
                                 catcher_name: get_name(defense.catcher, &player_meta),
                                 first_base_name: get_name(defense.first_base, &player_meta),
@@ -890,7 +977,8 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
                                 batter,
                                 batter_bats,
                                 batter_bats_desc,
-                                batter_pos: *players.get(&batter).unwrap_or(&Pos::Bench),
+                                batter_batting_order: *players.get(&batter).unwrap_or(&None),
+                                batter_pos,
                                 strike_zone_top: pitch_data.strike_zone_top,
                                 strike_zone_bottom: pitch_data.strike_zone_bottom,
 

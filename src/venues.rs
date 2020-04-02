@@ -210,6 +210,34 @@ pub struct Venue {
     pub venue_longitude: Option<f32>,
 }
 
+impl Default for Venue {
+    fn default() -> Self 
+    {
+        Venue {
+            id: 401,
+            venue_name: "".to_string(),
+            venue_city: "".to_string(),
+            venue_state: "".to_string(),
+            venue_state_abbr: "".to_string(),
+            venue_time_zone: TimeZone::EST,
+            venue_time_zone_offset: 0,
+            venue_capacity: None,
+            venue_surface: None,
+            venue_roof: None,
+            venue_left_line: None,
+            venue_left: None,
+            venue_left_center: None,
+            venue_center: None,
+            venue_right_center: None,
+            venue_right: None,
+            venue_right_line: None,
+            venue_retrosheet_id: "".to_string(),
+            venue_latitude: None,
+            venue_longitude: None,
+        }
+    }
+}
+
 #[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all="camelCase")]
 pub(crate) struct VenueDe {
