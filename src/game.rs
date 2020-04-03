@@ -160,6 +160,9 @@ pub struct Pitch {
     ///Did the pitch have a pickoff play right before it?
     pub preceded_by_pickoff: bool,
 
+    //Is it possible to turn a double play on a ground ball? We only
+    pub double_play_opportunity: bool,
+
     //RE288 State
     pub balls_start: u8,
     pub balls_end: u8,
@@ -891,9 +894,15 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
                             (_, _) => {(None, None)}
                         };
 
-                        // Some games have crap data that spit out extra records. Because of this, we need to unwrap_or for our RE288 table. The number of records
-                        // are very small and can be safely ignored. In the future, we may "fix" this by always setting balls_end and strikes_end to the "count" field
-                        // in the API.
+                        let double_play_opportunity = {
+                            outs_start < 2 &&
+                            (base_value_start == 1 || base_value_start == 3 || base_value_start ==5 || base_value_start == 7)
+                        };
+
+                        // Due to challenges with the Runner data, we hard-code a hack here that forces them to be a max of 7. This affects only
+                        // a small subset of records and will need to be fixed at some point.
+                        if base_value_end > 7 {base_value_end = 7};
+                        if base_value_start > 7 {base_value_start = 7};
 
                         let re_288_start = data.meta_data.re_288_default.get(&(balls_start, strikes_start, base_value_start, outs_start)).unwrap_or(&0f32);
                         let re_288_end = if outs_end == 3 {&0f32} else {data.meta_data.re_288_default.get(&(balls_end % 4, strikes_end % 3, base_value_end, outs_end % 3)).unwrap_or(&0f32)};
@@ -1051,7 +1060,7 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
                                 pitcher_highschool_prov_state: pitcher_details.highschool_prov_state.clone(),
                                 pitcher_college_name: pitcher_details.college_name.clone(),
                                 
-                                // TODO fix these!!!
+                                
                                 pitch_num_plate_appearance,
                                 pitch_num_inning,    
                                 pitch_num_game,
@@ -1072,6 +1081,7 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
                                 swing,
                                 foul,
                                 swing_and_miss,
+                                double_play_opportunity,
 
                                 in_play: event.details.is_in_play.unwrap().into(),
 

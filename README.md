@@ -58,7 +58,7 @@ BOSS relies on three crates for the bullk of its workload. <br>
 * Asynchronous out of the box. Player bios are memoized (cached) once they've been downloaded once, drastically reducing the number of network calls and the amount of time waiting on the network.
 * Flattens out all the data and serializes to an easy to use CSV file that can be ported to Tableau or other
 * The data pieces that take the most memory are the play descriptions, player names, etc. These are all compressed into hand-crafted enums, or kept in a hash table. This keeps the in-memory data set extremely small.
-* Would love to build a Rust wrapper for the Tableay Hyper API, but don't how to do that... yet.
+* Would love to build a Rust wrapper for the Tableau Hyper API, but don't how to do that... yet.
 
 
 ### Contributing
@@ -67,7 +67,7 @@ Contributions are certainly welcome once the basics are complete. I have never m
 
 ### Roadmap
 
-* 0.1: Working library that exports a vector of pitches to CSV and Bincode
+* 0.1: Working library that exports a vector of pitches to CSV with a clean API
 * 0.2: Error handling
 * 0.3: Gameday XML data pull for extra data
 * 0.4: Substitutions, RE288, Venue MetaData

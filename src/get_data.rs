@@ -36,7 +36,7 @@ pub fn get_everything() {
     let schedule = meta.schedule.clone();
     let meta_data = meta.into();
 
-    for _ in 0 .. 1 {
+    for _ in 0 .. 20 {
         get_play_by_play(schedule.clone(), &meta_data);
     }
 }
@@ -140,7 +140,7 @@ pub fn get_meta_data(years: Vec<u16>, sport_ids: Vec<u32>) -> VecMetaDataInputs 
 
     dbg!(teams_data.len());
     
-    for _ in 0.. 550 {
+    for _ in 0.. 360 {
     let boxscore_data = get_boxscore_data(&schedule_data);
     dbg! (boxscore_data.len());
     }
