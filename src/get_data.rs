@@ -36,7 +36,7 @@ pub fn get_everything() {
     let schedule = meta.schedule.clone();
     let meta_data = meta.into();
 
-    for _ in 0 .. 20 {
+    for _ in 0 .. 25 {
         get_play_by_play(schedule.clone(), &meta_data);
     }
 }
@@ -115,6 +115,7 @@ pub fn get_play_by_play (schedule: Vec<GameMetaData>, meta_data: &MetaData) {
 
     // let good_games: BTreeSet<u32> = stored_pbp.iter().map(|game| game.game_pk).collect();
 
+    let num_games_processed = good_games.len();
 
     let games_processed = GamesProcessed {
         good: good_games,
@@ -127,6 +128,7 @@ pub fn get_play_by_play (schedule: Vec<GameMetaData>, meta_data: &MetaData) {
     println!("Writing to CSV...");
     crate::cache::append_play_by_play(&result);
     println!("Added {} records.", result.len());
+    println!("Processed {} total games.", num_games_processed);
 
 }
 
@@ -140,10 +142,10 @@ pub fn get_meta_data(years: Vec<u16>, sport_ids: Vec<u32>) -> VecMetaDataInputs 
 
     dbg!(teams_data.len());
     
-    for _ in 0.. 360 {
-    let boxscore_data = get_boxscore_data(&schedule_data);
-    dbg! (boxscore_data.len());
-    }
+    // for _ in 0.. 360 {
+    // let boxscore_data = get_boxscore_data(&schedule_data);
+    // dbg! (boxscore_data.len());
+    // }
 
     let boxscore_data = get_boxscore_data(&schedule_data);
     dbg! (boxscore_data.len());
@@ -480,7 +482,7 @@ fn get_boxscore_data (schedule_data: &Vec<GameMetaData>) -> Vec<BoxScoreData> {
         .filter(|game| !games_cached.contains(&game.game_pk) && game.game_status == AbstractGameState::Final)
         .filter(|game| !error_games.contains(&game.game_pk))
         .map(|game| (game.game_pk, game.game_url_boxscore.clone()))
-        .take(500)
+        .take(50_000)
         // .take(0)
         .collect()
         ;
