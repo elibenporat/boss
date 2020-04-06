@@ -4,7 +4,7 @@
 #![allow(unused)]
 
 // use crate::metadata::MetaData;
-use crate::players::{Player, BatSideCode, BatSideDescription};
+use crate::players::{Player, SideCode as BatSideCode, SideDescription as BatSideDescription};
 use crate::play_by_play::{RunnerData, Code, PlayEventType, Event, Trajectory, HalfInning, Hardness, SideCode, SideDescription, PitchTypeCode, PitchTypeDescription, AllPlays};
 use crate::boxscore::{Pos, WeatherCondition, WindDirection, BoxScoreData};
 use crate::schedule::{GameType, GameTypeDescription, AbstractGameState, GameMetaData};

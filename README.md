@@ -4,7 +4,7 @@ A pure Rust baseball data aggregation and analytics library. For now supports ea
 
 All data retrieved by this application are subject to [copyright](http://gdx.mlb.com/components/copyright.txt) MLB Advanced Media, L.P.\
 The author and this project are not affiliated with Major League Baseball.
- 
+
 BOSS is designed from the ground up to be extremely efficient. All text fields that can be converted to an enum have been carefully mapped, creating a highly compressed data set. The challenge with baseball data isn't the computational complexity of data gathering, it is the sheer size of the data set. One of BOSS' primary design goals is to be as efficient as possible.
 
 BOSS leverages Rust's zero-cost asynchronous features and streams in data blazingly fast. This allows us to optimize the primary bottleneck - the dreaded network request.
@@ -13,7 +13,7 @@ Unlike all other packages the author is aware of, BOSS aims to provide a proverb
 
 ## Documentation
 
-https://docs.rs/boss
+[https://docs.rs/boss](https://docs.rs/boss)
 
 ## Usage
 
@@ -25,11 +25,11 @@ boss = "0.1"
 ## Similar Projects in Other Languages
 
 **R**\
-[baseballr](https://github.com/BillPetti/baseballr) by Bill Petti<br>
+[baseballr](https://github.com/BillPetti/baseballr) by Bill Petti\
 [pitchrx](https://github.com/cpsievert/pitchRx) by Carson Sievert
 
 **Python**\
-[MLB-StatsAPI](https://github.com/toddrob99/MLB-StatsAPI) by toddrob99<br>
+[MLB-StatsAPI](https://github.com/toddrob99/MLB-StatsAPI) by toddrob99\
 [PyBall](https://github.com/bradleyhurley/PyBall) by Bradley Hurley
 
 **JavaScript/Node.js**\
@@ -50,7 +50,7 @@ This project is also a learning project for the author and will likely change a 
 
 BOSS relies on the following crates for the bullk of its workload.
 
-* **Isahc** handles all of the network requests to grab the JSON files. Isahc's powerful Futures support allowed for easy construction of Asynchronous requests and streams.
+* **Isahc** handles all of the network requests to grab the JSON files. Isahc's powerful Futures support allows for easy construction of Asynchronous requests and streams.
 * **serde-json** combined with **SerDe** handle all the JSON parsing through declarative deserialization. We simply tell serde-json what structure to expect, point it to a file and the rest is handled magically.
 * **csv** handles the bulk export of the data to the ubiquitious csv format. CSV is used since every BI tool can import it.
 
@@ -74,8 +74,7 @@ Contributions are certainly welcome once the basics are complete. I have never m
 * 0.1: Working library that exports a vector of pitches to CSV with a clean API
 * 0.2: Error handling
 * 0.3: Gameday XML data pull for extra data
-* 0.4: Substitutions, RE288, Venue MetaData
+* 0.4: NCAA stats
 * 0.5: Retrosheet integration
 * 0.6: Fangraphs integration
 * 0.7: Japanese/Korean stats
-* 0.8: NCAA stats

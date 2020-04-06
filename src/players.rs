@@ -22,8 +22,10 @@ pub struct Player {
     pub highschool_city: Option<String>,
     pub highschool_prov_state: Option<String>,
     pub college_name: Option<String>,
-    pub bat_side_code: Option<BatSideCode>,
-    pub bat_side_description: Option<BatSideDescription>,
+    pub bat_side_code: Option<SideCode>,
+    pub bat_side_description: Option<SideDescription>,
+    pub throws_code: Option<SideCode>,
+    pub throws_description: Option<SideDescription>,
     pub birth_date: Option<Date>,
     pub draft_school_name: Option<String>,
     pub draft_year: Option<u16>,
@@ -93,6 +95,12 @@ impl From <PlayerDeserialize> for Player {
 
         };
 
+        let (throws_code, throws_description) = match player.throws {
+            Some (code) => (Some(code.code), code.description),
+            _ => (None, None),
+
+        };
+
         Player {
             id: player.id,
             name: player.name,
@@ -122,6 +130,9 @@ impl From <PlayerDeserialize> for Player {
             mlb_debut_date,
             bat_side_code,
             bat_side_description,
+
+            throws_code,
+            throws_description,
         }
     }
 }
@@ -146,7 +157,9 @@ pub (crate) struct PlayerDeserialize {
     pub (crate) weight: Option<u16>,
     pub (crate) education: Education,
     #[serde(alias="batSide")]
-    pub (crate) bat_side: Option<BatSide>,
+    pub (crate) bat_side: Option<Side>,
+    #[serde(alias="pitchHand")]
+    pub (crate) throws: Option<Side>,
     #[serde(alias="birthDate")]
     pub (crate) birth_date: Option<String>,
     pub (crate) drafts: Option<Vec<Draft>>,
@@ -197,13 +210,13 @@ pub (crate) struct College {
 }
 
 #[derive(Deserialize, Debug, Clone)]
-pub (crate) struct BatSide {
-    pub (crate) code: BatSideCode,
-    pub (crate) description: Option<BatSideDescription>,
+pub (crate) struct Side {
+    pub (crate) code: SideCode,
+    pub (crate) description: Option<SideDescription>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, Copy)]
-pub enum BatSideCode {
+pub enum SideCode {
     R,
     L,
     S,
@@ -211,10 +224,11 @@ pub enum BatSideCode {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, Copy)]
-pub enum BatSideDescription {
+pub enum SideDescription {
     Right,
     Left,
     Switch,
+    Either,
 }
 
 

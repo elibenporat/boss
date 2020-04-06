@@ -30,9 +30,10 @@ use crate::coaches;
 use crate::players;
 use crate::team;
 use crate::game;
+use crate::defense;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
-use csv::{Reader, Writer, WriterBuilder};
+use csv::{Reader, WriterBuilder};
 
 
 const VENUE_X_Y_JSON: &str = "\\venue_xy.json";
@@ -44,6 +45,7 @@ const COACH_JSON: &str = "\\coaches.json";
 const PLAYER_JSON: &str = "\\players.json";
 const TEAMS_JSON: &str = "\\teams.json";
 const PLAY_BY_PLAY: &str = r#"F:\Baseball\baseball.csv"#;
+const DEFENSE: &str = r#"F:\Baseball\defense.csv"#;
 
 fn cache_folder () -> String {
     format!("{}{}", utils::get_directory(), "\\cache" )
@@ -82,13 +84,25 @@ where T: DeserializeOwned,
 
 }
 
-#[allow(unused)]
-pub (crate) fn write_play_by_play (pitches: &Vec<game::Pitch>) {
+pub (crate) fn write_defense (defense: &Vec<defense::Defense>) {
 
-    let mut csv_writer = Writer::from_path(PLAY_BY_PLAY).unwrap();
+    let exists = match std::fs::File::open(DEFENSE) {
+        Err (_) => false,
+        Ok (_) => true,
+    };
 
-    for pitch in pitches {
-        csv_writer.serialize(pitch).unwrap();
+    let file = match exists {
+        true => std::fs::OpenOptions::new().append(true).open(DEFENSE).unwrap(),
+        false => std::fs::OpenOptions::new().create(true).write(true).open(DEFENSE).unwrap()
+    };
+
+
+    let mut csv_writer = WriterBuilder::new()
+        .has_headers(!exists)
+        .from_writer(file);
+
+    for d in defense {
+        csv_writer.serialize(d).unwrap();
     };
 
 }

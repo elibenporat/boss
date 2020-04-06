@@ -36,9 +36,39 @@ pub fn get_everything() {
     let schedule = meta.schedule.clone();
     let meta_data = meta.into();
 
-    for _ in 0 .. 25 {
-        get_play_by_play(schedule.clone(), &meta_data);
-    }
+    get_play_by_play(schedule.clone(), &meta_data);
+
+
+    output_defense(&meta_data);
+}
+
+/// Converts the serialized pitch data into a defense database
+pub fn output_defense (meta_data: &MetaData) {
+
+    use csv::Reader;
+    use crate::defense::{Defense, DefenseData};
+
+    const PLAY_BY_PLAY: &str = r#"F:\Baseball\baseball.csv"#;
+    
+    let players = meta_data.players.clone();
+
+    println!("Converting pitch data...");
+
+    let mut csv_reader = Reader::from_path(PLAY_BY_PLAY).unwrap();
+
+    for pitch in csv_reader.deserialize() {
+        match pitch {
+            Ok (p) => {
+                let defense: Vec<Defense> = DefenseData {
+                    pitch: p,
+                    players: &players,
+                }.into();
+                write_defense(&defense);
+            },
+            Err (_) => {},
+        }
+    };
+
 }
 
 pub fn get_play_by_play (schedule: Vec<GameMetaData>, meta_data: &MetaData) {
@@ -153,6 +183,11 @@ pub fn get_meta_data(years: Vec<u16>, sport_ids: Vec<u32>) -> VecMetaDataInputs 
     let coaches_data = get_coach_data(&schedule_data);
     dbg!(coaches_data.len());
                 
+    // for _ in 0 .. 100 {
+    //     let player_data = get_player_data(&boxscore_data, &coaches_data);
+    //     dbg!(player_data.len());
+    // }
+            
     let player_data = get_player_data(&boxscore_data, &coaches_data);
     dbg!(player_data.len());
             

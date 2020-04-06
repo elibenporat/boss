@@ -111,7 +111,7 @@ pub (crate) struct HitData {
     pub (crate) total_distance: Option<f32>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Copy, Clone)]
 pub enum Trajectory {
     #[serde(alias = "line_drive", alias = "bunt_line_drive")]
     LineDrive,
@@ -125,7 +125,7 @@ pub enum Trajectory {
     Unknown,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Copy, Clone)]
 #[serde(rename_all="camelCase")]
 pub enum Hardness {
     Soft,

@@ -1,5 +1,5 @@
 
-# Known Issues:
+# Known Issues
 
 1) Runner/Base Value Data
     - When there are multiple records for one one batter in a single event/action, it's difficult to assess which one is the most accurate.
