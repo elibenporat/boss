@@ -63,7 +63,7 @@ pub fn output_defense (meta_data: &MetaData) {
                     pitch: p,
                     players: &players,
                 }.into();
-                write_defense(&defense);
+                if defense.len() > 0 {write_defense(&defense)};
             },
             Err (_) => {},
         }

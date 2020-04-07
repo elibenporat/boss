@@ -32,6 +32,14 @@ pub struct Defense {
     pub fielder_birth_country: Option<String>,
 
     pub position: Pos,
+    pub outs_start: u8,
+    pub outs_end: u8,
+    pub balls_start: u8,
+    pub strikes_start: u8,
+    pub base_value_start: u8,
+    pub base_value_end: u8,
+    pub double_play_opp: bool,
+    pub runs: u8,
 
     pub batter_bats: crate::play_by_play::SideCode,
     pub batter_bats_desc: Option<crate::play_by_play::SideDescription>,
@@ -116,7 +124,8 @@ impl <'d> From<DefenseData<'d>> for Vec<Defense> {
         for fielder in fielders {
             
             // We'll ignore all records where we don't have fielder metadata.
-            // This should be somewhat rare
+            // This should be somewhat rare. So far this only occurs for the
+            // the following ids: 580899, 581659
             let meta = match players.get(&fielder.0) {
                 Some (player) => player.to_owned(),
                 None => {
@@ -146,6 +155,15 @@ impl <'d> From<DefenseData<'d>> for Vec<Defense> {
                     fielder_weight: meta.weight,
                     fielder_college_name: meta.college_name,
                     fielder_birth_country: meta.birth_country,
+
+                    outs_start: pitch.outs_start,
+                    outs_end: pitch.outs_end,
+                    balls_start: pitch.balls_start,
+                    strikes_start: pitch.strikes_start,
+                    base_value_start: pitch.base_value_start,
+                    base_value_end: pitch.base_value_end,
+                    double_play_opp: pitch.double_play_opportunity,
+                    runs: pitch.runs_scored,
 
                     position: fielder.1,
                     batter_bats,
