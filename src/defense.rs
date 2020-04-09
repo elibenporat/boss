@@ -30,6 +30,11 @@ pub struct Defense {
     pub fielder_weight: Option<u16>,
     pub fielder_college_name: Option<String>,
     pub fielder_birth_country: Option<String>,
+    pub fielder_mlb_debut: String,
+
+    pub fielded_by_id: Option<u32>,
+    pub fielded_by_name: String,
+    pub fielded_by_pos: Option<Pos>,
 
     pub position: Pos,
     pub outs_start: u8,
@@ -40,6 +45,7 @@ pub struct Defense {
     pub base_value_end: u8,
     pub double_play_opp: bool,
     pub runs: u8,
+    pub in_play_result: Option<crate::play_by_play::Event>,
 
     pub batter_bats: crate::play_by_play::SideCode,
     pub batter_bats_desc: Option<crate::play_by_play::SideDescription>,
@@ -47,12 +53,14 @@ pub struct Defense {
     pub batter_name: String,
     pub pitcher: u32,
     pub pitcher_name: String,
+    pub pitcher_throws: crate::play_by_play::SideCode,
+    pub pitcher_throws_desc: Option<crate::play_by_play::SideDescription>,
     pub hit_data_trajectory: Option<Trajectory>,
     pub hit_data_contact_quality: Option<Hardness>,
     pub hit_data_launch_angle: Option<f32>,
     pub hit_data_exit_velocity: Option<f32>,
     pub hit_data_total_distance: Option<f32>,
-    pub hit_data_spray_angle: Option<i8>,
+    pub hit_data_spray_angle: Option<f32>,
     pub hit_data_calc_distance: Option<f32>,
     pub sport_id: u32,
     pub sport_code: String,
@@ -140,6 +148,11 @@ impl <'d> From<DefenseData<'d>> for Vec<Defense> {
                 None => "".to_string(),
             };
 
+            let fielder_mlb_debut = match  meta.mlb_debut_date {
+                Some (date) => date.to_string(),
+                None => "".to_string(),
+            };
+
             fielder_data.push(
                 Defense {
                     game_date: pitch.game_date.clone(),
@@ -155,6 +168,11 @@ impl <'d> From<DefenseData<'d>> for Vec<Defense> {
                     fielder_weight: meta.weight,
                     fielder_college_name: meta.college_name,
                     fielder_birth_country: meta.birth_country,
+                    fielder_mlb_debut,
+
+                    fielded_by_id: pitch.fielded_by_id,
+                    fielded_by_name: pitch.fielded_by_name.clone(),
+                    fielded_by_pos: pitch.fielded_by_pos,
 
                     outs_start: pitch.outs_start,
                     outs_end: pitch.outs_end,
@@ -164,6 +182,7 @@ impl <'d> From<DefenseData<'d>> for Vec<Defense> {
                     base_value_end: pitch.base_value_end,
                     double_play_opp: pitch.double_play_opportunity,
                     runs: pitch.runs_scored,
+                    in_play_result: pitch.in_play_result,
 
                     position: fielder.1,
                     batter_bats,
@@ -171,6 +190,8 @@ impl <'d> From<DefenseData<'d>> for Vec<Defense> {
                     batter,
                     batter_name: batter_name.clone(),
                     pitcher,
+                    pitcher_throws: pitch.pitcher_throws,
+                    pitcher_throws_desc: pitch.pitcher_throws_desc,
                     pitcher_name: pitcher_name.clone(),
                     hit_data_trajectory: pitch.hit_data_trajectory,
                     hit_data_contact_quality: pitch.hit_data_contact_quality,

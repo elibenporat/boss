@@ -348,8 +348,16 @@ pub enum SideDescription {
 #[derive(Debug, Deserialize)]
 pub(crate) struct Runner {
     movement: RunnerMovement,
-    details: RunnerDetails
+    details: RunnerDetails,
+    credits: Option<Vec<Credits>>,
 }
+
+#[derive(Debug, Deserialize)]
+pub(crate) struct Credits {
+    player: Player,
+    position: crate::boxscore::Position,
+}
+
 
 #[derive(Debug, Deserialize)]
 #[serde(from = "Base")]
@@ -439,6 +447,8 @@ pub (crate) struct RunnerData {
     pub (crate) earned: bool,
     pub (crate) play_index: i8,
     pub (crate) outs: u8,
+    pub (crate) fielded_by_pos: Option<crate::boxscore::Pos>,
+    pub (crate) fielded_by_id: Option<u32>,
 }
 
 //TODO We can remove this from and do it at a later stage. TBD
@@ -459,6 +469,14 @@ pub (crate) struct MatchupData {
 /// to reason about and troubleshoot.
 impl From <Runner> for RunnerData {
     fn from (runner: Runner) -> RunnerData {
+        
+        // If there is a Vec of credits, the first record should be the player who fielded the ball. We theoretically
+        // care about all the fielders who touched the ball, but I see no way to model that here.
+        let (fielded_by_id, fielded_by_pos) = match runner.credits {
+            Some (credits) => (credits[0].player.id, Some(credits[0].position.abbreviation)),
+            None => (None, None),
+        };
+        
         RunnerData {
             //If we don't have an id, we default to HP Umpire CB Bucknor
             runner_id: runner.details.runner.id.unwrap_or(427044),
@@ -471,6 +489,9 @@ impl From <Runner> for RunnerData {
             earned: runner.details.earned,
             play_index: runner.details.play_index,
             outs: runner.movement.is_out.into(),
+
+            fielded_by_id,
+            fielded_by_pos,
         }
     }
 }

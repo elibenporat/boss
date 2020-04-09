@@ -221,6 +221,10 @@ pub struct Pitch {
     pub strikeout: u8,
     pub walk: u8,
 
+    pub fielded_by_id: Option<u32>,
+    pub fielded_by_pos: Option<Pos>,
+    pub fielded_by_name: String,
+
     // hit data
     pub hit_data_coord_x: Option<f32>, 
     pub hit_data_coord_y: Option<f32>, 
@@ -230,9 +234,12 @@ pub struct Pitch {
     pub hit_data_exit_velocity: Option<f32>,
     pub hit_data_total_distance: Option<f32>,
     //Angle from 0 = 3B/LF Line to 90 1B/RF Line
-    pub hit_data_spray_angle: Option<i8>,
-    //distannce calculated from spray chart
+    pub hit_data_spray_angle: Option<f32>,
+    //distance calculated from spray chart
     pub hit_data_calc_distance: Option<f32>,
+
+
+
 
 
     // MetaData
@@ -652,6 +659,20 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
                     runner_state.insert(runner.runner_id, *runner);
                 };
 
+                let (fielded_by_id, fielded_by_pos) = plate_app.runners.clone().into_iter()
+                    .filter(|r| r.play_index == event.index as i8)
+                    .map(|r| (r.fielded_by_id, r.fielded_by_pos))
+                    .nth(0).unwrap_or((None, None))
+                    ;
+
+                let fielded_by_name = match fielded_by_id {
+                    Some(id) => match player_meta.get(&id) {
+                        Some(player) => player.name.clone(),
+                        None => "".to_string(),
+                    },
+                    None => "".to_string(),
+                };
+
 
                 // Our runner state is persistent, so we don't need to match it to the specific pitch.
                 base_value_end = runner_state.values()
@@ -884,8 +905,8 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
                                 let temp_angle = ((venue_home_plate_y - y)/hit_data_calc_distance).acos()/PI*180f32;
 
                                 let hit_data_spray_angle = match (x < venue_home_plate_x) {
-                                    true =>  45i8 - temp_angle.round() as i8,
-                                    false => 45i8 + temp_angle.round() as i8,
+                                    true =>  45f32 - temp_angle,
+                                    false => 45f32 + temp_angle,
                                 };
 
                                 (Some(hit_data_spray_angle), Some(hit_data_calc_distance))
@@ -1126,10 +1147,12 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
                                 hit_data_launch_angle, 
                                 hit_data_exit_velocity, 
                                 hit_data_total_distance, 
-
-                                //TODO - Add the distance and angle logic!
                                 hit_data_spray_angle,
                                 hit_data_calc_distance,
+
+                                fielded_by_id,
+                                fielded_by_name,
+                                fielded_by_pos,
 
                                 official_scorer_id,
                                 official_scorer_name: official_scorer_name.clone(),

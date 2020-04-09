@@ -4,6 +4,7 @@
 //! 
 
 use crate::boxscore::{BoxScoreDe, BoxScoreData, fix_boxscore};
+use crate::defense::{Defense, DefenseData};
 use crate::cache::*;
 use crate::coaches::{CoachData, Coaches, Roster};
 use crate::feed_live::{FeedData,Feed};
@@ -39,10 +40,13 @@ pub fn get_everything() {
     get_play_by_play(schedule.clone(), &meta_data);
 
 
-    output_defense(&meta_data);
+    // output_defense(&meta_data);
 }
 
+#[allow(unused)]
 /// Converts the serialized pitch data into a defense database
+/// Only use this if you want to build the defense data from scratch
+/// Data are streamed so as to limit memory usage
 pub fn output_defense (meta_data: &MetaData) {
 
     use csv::Reader;
@@ -68,11 +72,9 @@ pub fn output_defense (meta_data: &MetaData) {
             Err (_) => {},
         }
     };
-
 }
 
 pub fn get_play_by_play (schedule: Vec<GameMetaData>, meta_data: &MetaData) {
-
 
     #[derive(Serialize, Deserialize)]
     struct GamesProcessed {
@@ -129,11 +131,11 @@ pub fn get_play_by_play (schedule: Vec<GameMetaData>, meta_data: &MetaData) {
         .flatten()
         .collect()
         ;
-        
+       
     
     let games_returned: BTreeSet<u32> = result.iter().map(|game|game.game_pk).collect();
     let games_missed: BTreeSet<u32> = requested_games.into_iter().filter(|game| !games_returned.contains(game)).collect();
-    
+
     //They should equal the requested_games.len()
     dbg!(games_missed.len());
     dbg!(games_returned.len());
@@ -155,9 +157,27 @@ pub fn get_play_by_play (schedule: Vec<GameMetaData>, meta_data: &MetaData) {
     let json = serde_json::to_string(&games_processed).unwrap();
     std::fs::write(r#"F:\Baseball\games_processed.json"#, json).unwrap();
 
-    println!("Writing to CSV...");
+    println!("Writing pitch by pitch data to CSV...");
     crate::cache::append_play_by_play(&result);
     println!("Added {} records.", result.len());
+
+    println!("Converting to Defense Data...");
+
+    let defense: Vec<Defense> = result.into_iter()
+        .map(|pitch| {
+            let defense: Vec<Defense> = DefenseData {
+                pitch,
+                players: &meta_data.players,
+            }.into();
+            defense 
+        })
+        .flatten()
+        .collect()
+        ;
+    
+    println!("Writing defense data to CSV...");
+    if defense.len() > 0 {write_defense(&defense)};
+
     println!("Processed {} total games.", num_games_processed);
 
 }
