@@ -679,6 +679,9 @@ fn get_schedule_data (years: Vec<u16>, sport_ids: Vec<u32>) -> Vec<GameMetaData>
                     ;
 
     schedule_data.extend(games);
+    schedule_data.sort();
+    schedule_data.dedup_by_key(|game| game.game_pk);
+
     cache_schedule(&schedule_data);
     
     dbg!(&schedule_data.len());

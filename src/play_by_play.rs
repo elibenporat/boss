@@ -473,7 +473,7 @@ impl From <Runner> for RunnerData {
         // If there is a Vec of credits, the first record should be the player who fielded the ball. We theoretically
         // care about all the fielders who touched the ball, but I see no way to model that here.
         let (fielded_by_id, fielded_by_pos) = match runner.credits {
-            Some (credits) => (credits[0].player.id, Some(credits[0].position.abbreviation)),
+            Some (credits) => {if credits.len() > 0 {(credits[0].player.id, Some(credits[0].position.abbreviation))} else {(None, None)}},
             None => (None, None),
         };
         

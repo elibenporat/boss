@@ -83,8 +83,8 @@ pub type SeasonSportStatus = BTreeSet<(u16, u32, AbstractGameState)>;
 pub type SeasonSportCache = BTreeMap<(u16, u32), SeasonStatus>;
 
 
-///GameMetaData is the struct exported by this module.
-#[derive(Deserialize, Serialize, Debug, Clone)]
+///GameMetaData is the struct exported by the schedule module.
+#[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct GameMetaData {
     pub game_type: GameType,
     pub game_type_desc: GameTypeDescription,
@@ -380,7 +380,7 @@ struct Venue {
     id: u32,
 }
 
-#[derive(Deserialize, Serialize, Debug, Copy, Clone)]
+#[derive(Deserialize, Serialize, Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 // #[serde(field_identifier)]
 pub enum GameType {
     /// Regular Season
@@ -409,7 +409,7 @@ pub enum GameType {
     P,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone, Copy)]
+#[derive(Deserialize, Serialize, Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
 pub enum GameTypeDescription {
     RegularSeason,
     FirstRound,

@@ -18,7 +18,7 @@ use serde::{Serialize, Deserialize};
 /// but it doesn't really matter if we track a batter as 24.21 years old instead of 24.25 years old.
 /// 
 /// We ignore the time from the gameDate string as we'll get more accurate info from the boxscore, where we want the "Frist Pitch"
-#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Date {
     pub year: u16,
     pub month: u8,
