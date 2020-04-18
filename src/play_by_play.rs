@@ -113,14 +113,20 @@ pub (crate) struct HitData {
 
 #[derive(Debug, Deserialize, Serialize, Copy, Clone)]
 pub enum Trajectory {
-    #[serde(alias = "line_drive", alias = "bunt_line_drive")]
+    #[serde(alias = "line_drive")]
     LineDrive,
+    #[serde(alias = "bunt_line_drive")]
+    BuntLineDrive,
     #[serde(alias = "fly_ball")]
     FlyBall,
-    #[serde(alias = "popup", alias = "bunt_popup")]
+    #[serde(alias = "popup")]
     PopUp,
-    #[serde(alias = "ground_ball", alias="bunt_grounder")]
+    #[serde(alias = "bunt_popup")]
+    BuntPopUp,
+    #[serde(alias = "ground_ball")]
     GroundBall,
+    #[serde(alias = "bunt_grounder")]
+    BuntGroundBall,
     #[serde(other)]
     Unknown,
 }
@@ -355,7 +361,7 @@ pub(crate) struct Runner {
 #[derive(Debug, Deserialize)]
 pub(crate) struct Credits {
     player: Player,
-    position: crate::boxscore::Position,
+    position: Option<crate::boxscore::Position>,
 }
 
 
@@ -473,7 +479,10 @@ impl From <Runner> for RunnerData {
         // If there is a Vec of credits, the first record should be the player who fielded the ball. We theoretically
         // care about all the fielders who touched the ball, but I see no way to model that here.
         let (fielded_by_id, fielded_by_pos) = match runner.credits {
-            Some (credits) => {if credits.len() > 0 {(credits[0].player.id, Some(credits[0].position.abbreviation))} else {(None, None)}},
+            Some (credits) => {if credits.len() > 0 {(credits[0].player.id, match credits[0].position {
+                Some(pos) => Some(pos.abbreviation),
+                None => None,
+            })} else {(None, None)}},
             None => (None, None),
         };
         

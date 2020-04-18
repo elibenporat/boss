@@ -1,6 +1,15 @@
-//! Error handling module 
+//! Error handling module for BOSS
 //! 
-//! TODO - Do some research on this. Need some good examples
+//! There are a lot of things that can go wrong when we try to parse and build out a baseball game into data. 
+//! 
+//! Errors can be grouped as follows:
+//! 
+//! **Source Data Issues:**\
+//!     * **Extra Records / Garbage Records:** Certain source data are clearly junk as they produce counts (balls and strikes) that are clearly wrong.
+//!     * **Missing Metadata:** Some games do not have any boxscore data, or are missing other metadata such as coaches, venue etc.
+//!     * 
+//! 
+//! 
 //! 
 //! 
 

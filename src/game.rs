@@ -185,6 +185,7 @@ pub struct Pitch {
     // When swing == 1 this will be Some(0) or Some (1), Else None
     pub swing_and_miss: Option<u8>,
     pub foul: u8,
+    pub bunt: Option<bool>,
 
     pub pitch_speed_start: Option<f32>,
     pub pitch_speed_end: Option<f32>,
@@ -661,6 +662,7 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
 
                 let (fielded_by_id, fielded_by_pos) = plate_app.runners.clone().into_iter()
                     .filter(|r| r.play_index == event.index as i8)
+                    .filter(|r| r.fielded_by_pos.is_some())
                     .map(|r| (r.fielded_by_id, r.fielded_by_pos))
                     .nth(0).unwrap_or((None, None))
                     ;
@@ -797,7 +799,6 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
                                 let in_play_2b = if in_play_result == Event::Double {1} else {0};
                                 let in_play_3b = if in_play_result == Event::Triple {1} else {0};
                                 let in_play_hr = if in_play_result == Event::HomeRun {1} else {0};
-
                                 (Some(in_play_result), Some(in_play_1b), Some(in_play_2b), Some(in_play_3b), Some(in_play_hr))
                             },
                             false => (None, None, None, None, None),
@@ -875,7 +876,8 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
                         let 
                             (   hit_data_coord_x, hit_data_coord_y,
                                 hit_data_contact_quality,  hit_data_trajectory,
-                                hit_data_exit_velocity, hit_data_launch_angle, hit_data_total_distance, 
+                                hit_data_exit_velocity, hit_data_launch_angle, hit_data_total_distance,
+                                bunt 
                             ) = match event.hit_data {
                             
                             Some (hit_data) => 
@@ -884,35 +886,41 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
                                     Some(c) => (c.x, c.y),
                                     None => (None, None),
                                 };
+                                let bunt = match hit_data.trajectory {
+                                    Some(Trajectory::BuntGroundBall) |
+                                    Some(Trajectory::BuntLineDrive) |
+                                    Some(Trajectory::BuntPopUp) 
+                                        => Some (true),
+                                    Some(_) => Some (false),
+                                    None => None,
+                                };
                                 (x, y, hit_data.hardness, hit_data.trajectory,
-                                hit_data.launch_speed, hit_data.launch_angle, hit_data.total_distance,
+                                hit_data.launch_speed, hit_data.launch_angle, hit_data.total_distance, bunt,
                             )},
-                            None => (None, None, None, None, None, None, None,),
+                            None => (None, None, None, None, None, None, None, None),
                         };
 
                         // Calculate the spray angle and the hit distance (in pixels)
-                        let (hit_data_spray_angle, hit_data_calc_distance) = 
-                        
-                        match (hit_data_coord_x, hit_data_coord_y) {
-                            (Some(x), Some(y)) => {
-                                let x_2 = (venue_home_plate_x - x) * (venue_home_plate_x - x) ;
-                                let y_2 = (venue_home_plate_y - y) * (venue_home_plate_y - y) ;
-                                
-                                let hit_data_calc_distance = (x_2 + y_2).sqrt();
-                                
-                                use std::f32::consts::PI;
+                        let (hit_data_spray_angle, hit_data_calc_distance) = match (hit_data_coord_x, hit_data_coord_y) {
+                            (Some(x), Some(y)) => 
+                                {
+                                    let x_2 = (venue_home_plate_x - x) * (venue_home_plate_x - x) ;
+                                    let y_2 = (venue_home_plate_y - y) * (venue_home_plate_y - y) ;
+                                    
+                                    let hit_data_calc_distance = (x_2 + y_2).sqrt();
+                                    
+                                    use std::f32::consts::PI;
 
-                                let temp_angle = ((venue_home_plate_y - y)/hit_data_calc_distance).acos()/PI*180f32;
+                                    let temp_angle = ((venue_home_plate_y - y)/hit_data_calc_distance).acos()/PI*180f32;
 
-                                let hit_data_spray_angle = match (x < venue_home_plate_x) {
-                                    true =>  45f32 - temp_angle,
-                                    false => 45f32 + temp_angle,
-                                };
+                                    let hit_data_spray_angle = match (x < venue_home_plate_x) {
+                                        true =>  45f32 - temp_angle,
+                                        false => 45f32 + temp_angle,
+                                    };
 
-                                (Some(hit_data_spray_angle), Some(hit_data_calc_distance))
-
-                            }
-                            (_, _) => {(None, None)}
+                                    (Some(hit_data_spray_angle), Some(hit_data_calc_distance))
+                                },
+                            (_, _) => (None, None),
                         };
 
                         let double_play_opportunity = {
@@ -1103,9 +1111,9 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
                                 foul,
                                 swing_and_miss,
                                 double_play_opportunity,
-
+                                
                                 in_play: event.details.is_in_play.unwrap().into(),
-
+                                
                                 pitch_speed_start: pitch_data.start_speed,
                                 pitch_speed_end: pitch_data.end_speed,
                                 pitch_break_length,
@@ -1131,15 +1139,16 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
                                 pitch_z0: pitch_data.coordinates.z0,
                                 pitch_type_code,
                                 pitch_type_desc,
-
+                                
                                 in_play_1b,
                                 in_play_2b,
                                 in_play_3b,
                                 in_play_hr,
                                 in_play_result,
+                                bunt,
                                 strikeout,
                                 walk,
-
+                                
                                 hit_data_coord_x, 
                                 hit_data_coord_y, 
                                 hit_data_trajectory, 

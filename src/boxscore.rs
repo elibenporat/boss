@@ -492,7 +492,7 @@ pub (crate) struct Info {
   pub (crate) value: Option<String>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Copy, Clone)]
 pub (crate) struct Position {
   pub (crate) abbreviation: Pos,
 }

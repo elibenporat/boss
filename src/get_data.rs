@@ -37,7 +37,9 @@ pub fn get_everything() {
     let schedule = meta.schedule.clone();
     let meta_data = meta.into();
 
-    get_play_by_play(schedule.clone(), &meta_data);
+    for _ in 0 .. 50 {
+        get_play_by_play(schedule.clone(), &meta_data);
+    }
 
 
     // output_defense(&meta_data);
@@ -163,7 +165,7 @@ pub fn get_play_by_play (schedule: Vec<GameMetaData>, meta_data: &MetaData) {
 
     println!("Converting to Defense Data...");
 
-    let defense: Vec<Defense> = result.into_iter()
+    let defense: Vec<Defense> = result.into_par_iter()
         .map(|pitch| {
             let defense: Vec<Defense> = DefenseData {
                 pitch,
