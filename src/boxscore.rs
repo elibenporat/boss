@@ -10,6 +10,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap};
 use regex::Regex;
+use tree_buf::{Read, Write};
 
 //Horrible hack to allow us to pull in the players. Somewhat brittle, but can't figure
 //out a better way to do it
@@ -497,7 +498,7 @@ pub (crate) struct Position {
   pub (crate) abbreviation: Pos,
 }
 
-#[derive(Deserialize, Serialize, Debug, Hash, Eq, PartialEq, Copy, Clone)]
+#[derive(Deserialize, Serialize, Debug, Hash, Eq, PartialEq, Copy, Clone, Read, Write)]
 pub enum Pos {
   #[serde(rename="C")]
   Catcher,

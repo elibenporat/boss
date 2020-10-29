@@ -19,6 +19,7 @@
 
 
 use serde::{Deserialize, Serialize};
+use tree_buf::{Read, Write};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all="camelCase")]
@@ -111,7 +112,7 @@ pub (crate) struct HitData {
     pub (crate) total_distance: Option<f32>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Copy, Clone)]
+#[derive(Debug, Deserialize, Serialize, Copy, Clone, Read, Write, PartialEq)]
 pub enum Trajectory {
     #[serde(alias = "line_drive")]
     LineDrive,
@@ -131,7 +132,7 @@ pub enum Trajectory {
     Unknown,
 }
 
-#[derive(Debug, Deserialize, Serialize, Copy, Clone)]
+#[derive(Debug, Deserialize, Serialize, Copy, Clone, Read, Write, PartialEq)]
 #[serde(rename_all="camelCase")]
 pub enum Hardness {
     Soft,
@@ -333,7 +334,7 @@ pub(crate) struct Side {
     description: Option<SideDescription>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Copy, Clone)]
+#[derive(Debug, Deserialize, Serialize, Copy, Clone, Read, Write, PartialEq)]
 pub enum SideCode {
     L,
     R,
@@ -342,7 +343,7 @@ pub enum SideCode {
     Other,
 }
 
-#[derive(Debug, Deserialize, Serialize, Copy, Clone)]
+#[derive(Debug, Deserialize, Serialize, Copy, Clone, Read, Write, PartialEq)]
 pub enum SideDescription {
     Left,
     Right,
@@ -600,7 +601,7 @@ pub (crate) enum EventType {
 /// Event stores all the possible events. Wherever possible, we'll convert text
 /// into enums, avoiding lifetime issues and increasing memory efficiency. Serde does all the heavy lifting in the
 /// background. TODO: use this for both the "event" and "eventType" fields to see where there are differences
-#[derive(Debug, Deserialize, PartialEq, Eq, Serialize, Copy, Clone)]
+#[derive(Debug, Deserialize, PartialEq, Eq, Serialize, Copy, Clone, Read, Write)]
 pub enum Event {
     #[serde(alias = "Game Advisory")]
     GameAdvisory,

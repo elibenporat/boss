@@ -24,6 +24,7 @@ use crate::cache::{cache_schedule, load_schedule};
 use isahc::prelude::*;
 use rayon::prelude::*;
 use std::collections::{BTreeSet, BTreeMap};
+use tree_buf::{Read, Write};
 
 
 pub fn test_schedule() {
@@ -217,6 +218,7 @@ impl Schedule {
                 //TODO: Add proper error handling
                 // println!("Downloading: {}", &url.0);
                 let json: String = isahc::get(url.clone().0).unwrap().text().unwrap();
+                // dbg!(&url);
                 let sched: ScheduleDe = serde_json::from_str(&json).unwrap();
                 let sched_with_context = ScheduleWithContext {
                     sched, 
@@ -370,17 +372,18 @@ struct VenueID (u32);
 
 impl From<Venue> for VenueID {
     fn from(venue: Venue) -> VenueID {
-        VenueID(venue.id)
+        // 4270 is the "generic" stadium
+        VenueID(venue.id.unwrap_or(4270))
     }
 }
 
 
 #[derive(Deserialize, Debug)]
 struct Venue { 
-    id: u32,
+    id: Option<u32>,
 }
 
-#[derive(Deserialize, Serialize, Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Deserialize, Serialize, Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Read, Write)]
 // #[serde(field_identifier)]
 pub enum GameType {
     /// Regular Season

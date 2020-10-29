@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use isahc::prelude::*;
 use crate::cache;
 use std::collections::BTreeSet;
+use tree_buf::{Read, Write};
 
 /// Link to all the venues used by the MLB Stats API. "Hydrated" fields include the location, field dimension and
 /// cross reference IDs that can be used to link to retrosheet.
@@ -384,14 +385,14 @@ pub enum TimeZone {
     EUROPE
 }
 
-#[derive(Deserialize, Serialize, Debug, Copy, Clone)]
+#[derive(Deserialize, Serialize, Debug, Copy, Clone, Read, Write, PartialEq)]
 pub enum SurfaceType {
     Artificial,
     Grass,
     Indoor,
 }
 
-#[derive(Deserialize, Serialize, Debug, Copy, Clone)]
+#[derive(Deserialize, Serialize, Debug, Copy, Clone, Read, Write, PartialEq)]
 pub enum RoofType {
     Dome,
     Open,

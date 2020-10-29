@@ -6,6 +6,7 @@
 //! 
 
 use serde::{Serialize, Deserialize};
+use tree_buf::{Read, Write};
 
 pub fn test_sports() {
     
@@ -45,7 +46,7 @@ pub struct Sport {
     pub level_of_play_rank: u8,
 }
 
-#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Serialize, Deserialize, Read, Write, PartialEq)]
 pub enum MLB {
     MLB,
     Minors,

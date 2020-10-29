@@ -132,7 +132,7 @@ pub (crate) fn append_play_by_play (pitches: &Vec<game::Pitch>) {
 }
 
 #[allow(unused)]
-pub (crate) fn load_play_by_play () -> Vec<game::Pitch> {
+pub fn load_play_by_play () -> Vec<game::Pitch> {
 
     let mut csv_reader = Reader::from_path(PLAY_BY_PLAY).unwrap();
 
@@ -143,6 +143,20 @@ pub (crate) fn load_play_by_play () -> Vec<game::Pitch> {
         // .map(|record| {let pitch: game::Pitch = record.unwrap(); pitch})
         .collect()
         
+}
+
+#[allow(unused)]
+pub fn load_defense () -> Vec<defense::Defense> {
+
+    let mut csv_reader = Reader::from_path(DEFENSE).unwrap();
+
+    type CSVResult = Result< defense::Defense, csv::Error>;
+
+    csv_reader.deserialize()
+        .filter_map(|record: CSVResult| record.ok())
+        // .map(|record| {let pitch: game::Pitch = record.unwrap(); pitch})
+        .take(12_400_000)
+        .collect()
 }
 
 pub (crate) fn cache_teams_data (teams: &Vec<team::TeamData>) {

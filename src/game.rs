@@ -24,6 +24,12 @@ pub (crate) struct GameData <'m> {
     pub (crate) game_pk: u32,
 }
 
+#[derive(Debug, Serialize, Deserialize, Copy, Clone)]
+pub enum PitcherSPRP {
+    SP,
+    RP,
+}
+
 
 /// Pitch is the final serializable struct that we'll export from this module. It will flatten all the at-bat level
 /// data for easy use. This is intentionally de-normalized for ease of use. 
@@ -116,6 +122,10 @@ pub struct Pitch {
     pub pitcher_highschool_city: Option<String>,
     pub pitcher_highschool_prov_state: Option<String>,
     pub pitcher_college_name: Option<String>,
+    pub pitcher_sp_rp: PitcherSPRP,
+
+    pub pitcher_num_pitch: u16,
+    pub pitcher_num_plate_appearance: u16,
 
     pub batter: u32,
     pub batter_name: String,
@@ -140,7 +150,6 @@ pub struct Pitch {
     pub batter_highschool_city: Option<String>,
     pub batter_highschool_prov_state: Option<String>,
     pub batter_college_name: Option<String>,
-
 
     pub batter_bats: SideCode,
     pub batter_bats_desc: Option<SideDescription>,
@@ -476,8 +485,14 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
         let mut outs_start = 0u8;
         let mut outs_end = 0u8;
         let mut pitch_num_inning = 0u8;
+        
         let mut pitch_num_game = 0u16;
 
+        let mut pitcher_num_pitch_game = (0u16, 0u16);
+        let mut pitcher_num_plate_appearance_game = (0u16, 0u16);
+
+        // Set the default SP/RP to SP, we'll update this later if there is a pitching sub
+        let mut pitcher_sp_rp = (PitcherSPRP::SP, PitcherSPRP::SP);
 
         // We'll keep track of all runners in a vec, which we'll update after every plate appearance and
         // clear at the end of each half-inning. 
@@ -499,6 +514,16 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
             let pitcher = plate_app.matchup.pitcher_id;
             let pitcher_throws = plate_app.matchup.pitcher_pitch_hand_code;
             let pitcher_throws_desc = plate_app.matchup.pitcher_pitch_hand_desc;
+
+            // Update the pitcher_num_plate_appearance (home, away) tuple
+            match half_inning {
+                HalfInning::Top => {
+                    pitcher_num_plate_appearance_game.0 += 1;
+                },
+                HalfInning::Bottom => {
+                    pitcher_num_plate_appearance_game.1 += 1;
+                }
+            }
 
             
             
@@ -747,8 +772,22 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
                                     },
                                     _ => {}
                                 }
+                            },
+                            Some(Event::PitchingSubstitution) => {
+                                            // Update the pitcher_num_plate_appearance (home, away) tuple
+                                match half_inning {
+                                    HalfInning::Top => {
+                                        pitcher_sp_rp.0 = PitcherSPRP::RP;
+                                        pitcher_num_plate_appearance_game.0 = 0;
+                                        pitcher_num_pitch_game.0 = 0;
 
-
+                                    },
+                                    HalfInning::Bottom => {
+                                        pitcher_sp_rp.1 = PitcherSPRP::RP;
+                                        pitcher_num_plate_appearance_game.1 = 0;
+                                        pitcher_num_pitch_game.1 = 0;
+                                    }
+                                }
                             }
 
 
@@ -771,6 +810,16 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
                         pitch_num_game += 1;
                         pitch_num_plate_appearance += 1;
                         pitch_num_inning +=1;
+
+                        // Update the pitcher_num_pitch_game (home, away) tuple
+                        match half_inning {
+                            HalfInning::Top => {
+                                pitcher_num_pitch_game.0 += 1;
+                            },
+                            HalfInning::Bottom => {
+                                pitcher_num_pitch_game.1 += 1;
+                            }
+                        }
 
                         // We need the defense that's off the field to find the batter's current position in the game
                         let defense_to_use_for_batter_pos = match half_inning {
@@ -937,6 +986,12 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
                         let re_288_end = if outs_end == 3 {&0f32} else {data.meta_data.re_288_default.get(&(balls_end % 4, strikes_end % 3, base_value_end, outs_end % 3)).unwrap_or(&0f32)};
                         let re_288_val = re_288_end - re_288_start + runs_scored as f32;
 
+                        
+                        let (pitcher_sp_rp_half, pitcher_num_plate_appearance, pitcher_num_pitch) = match half_inning {
+                            HalfInning::Top => (pitcher_sp_rp.0, pitcher_num_plate_appearance_game.0, pitcher_num_pitch_game.0),
+                            HalfInning::Bottom => (pitcher_sp_rp.1, pitcher_num_plate_appearance_game.1, pitcher_num_pitch_game.1)
+                        };
+
                         pitches.push(
                             Pitch {
                                 half_inning,
@@ -1089,7 +1144,11 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
                                 pitcher_highschool_prov_state: pitcher_details.highschool_prov_state.clone(),
                                 pitcher_college_name: pitcher_details.college_name.clone(),
                                 
-                                
+                                pitcher_sp_rp: pitcher_sp_rp_half,
+
+                                pitcher_num_plate_appearance,
+                                pitcher_num_pitch,
+
                                 pitch_num_plate_appearance,
                                 pitch_num_inning,    
                                 pitch_num_game,

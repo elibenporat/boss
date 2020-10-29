@@ -118,7 +118,7 @@ pub fn get_play_by_play (schedule: Vec<GameMetaData>, meta_data: &MetaData) {
 
     let result: Vec<Pitch> = pbp_urls.into_par_iter()
         // .inspect(|data| println!("{}", &data.1))
-        .map (|data| (data.0, http_client.get(data.1).unwrap().text().unwrap()))
+        .map (|data| (data.0, http_client.get(data.1).unwrap().text().unwrap_or("".to_string())))
         .filter(|data| data.1.contains("allPlays"))
         .map (|data| {
             let pbp: Game = serde_json::from_str(&data.1).expect(&format!("Error with game_pk: {}", data.0));

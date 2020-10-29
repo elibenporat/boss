@@ -7,6 +7,8 @@
       record, but this should be fixed. I *think* taking the record with the highest end_base_value will likely be more accurate.
     - For now, we're going to just hard code in a "fix" (read: hack) that changes any base value of 8 to 7.
 
+2) Pitch_Num_Game and num_plate_appearance don't count separately for each side! Big issue
+
 ## Issues that are fixed for the most part
 
 1) Fix the games with broken metadata - DONE

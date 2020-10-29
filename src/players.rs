@@ -8,6 +8,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::HashMap;
 use crate::utils::*;
+use tree_buf::{Read, Write};
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct Player {
@@ -215,7 +216,7 @@ pub (crate) struct Side {
     pub (crate) description: Option<SideDescription>,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone, Copy)]
+#[derive(Deserialize, Serialize, Debug, Clone, Copy, Read, Write, PartialEq)]
 pub enum SideCode {
     R,
     L,
@@ -223,7 +224,7 @@ pub enum SideCode {
     B,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone, Copy)]
+#[derive(Deserialize, Serialize, Debug, Clone, Copy, Read, Write, PartialEq)]
 pub enum SideDescription {
     Right,
     Left,

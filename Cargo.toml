@@ -19,13 +19,15 @@ maintenance = { status = "actively-developed" }
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-isahc = "0.8"
+isahc = "0.9.10"
 csv = "1.1"
 serde = {version = "1.0", features = ["derive"]}
 rayon = "1.2"
 serde_json = "1"
 futures = "0.3"
 regex = "1"
+#Experimental use of Tree-Buf
+tree-buf = {git = "https://github.com/That3Percent/tree-buf/", rev="e3bf1fa19e4a114308fda17a9062e7eb0bd90d3c"}
 
 # This is just for development, remove when it's a working library
 [profile.release]
@@ -34,3 +36,5 @@ opt-level = 3
 [[bin]]
 name = "boss"
 path = "src/bin/test.rs"
+#name = "tree-buf"
+#path = "src/bin/tree-buf-test.rs"

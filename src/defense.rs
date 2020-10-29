@@ -5,15 +5,16 @@
 /// 
 /// 
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use crate::game::Pitch;
 use crate::boxscore::Pos;
 use crate::play_by_play::{Trajectory, Hardness};
 use crate::schedule::GameType;
 use crate::players::{Player, SideCode, SideDescription};
 use std::collections::hash_map::HashMap;
+use tree_buf::{Read, Write};
 
-#[derive(Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Read, Write, PartialEq)]
 pub struct Defense {
     pub game_date: String,
     pub game_type: GameType,
