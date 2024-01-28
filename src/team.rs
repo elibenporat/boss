@@ -16,9 +16,9 @@ pub (crate) struct TeamJson {
 #[derive(Deserialize, Clone)]
 pub (crate) struct TeamDeserialize {
     pub (crate) id: u32,
-    pub (crate) name: String,
+    pub (crate) name: Option<String>,
     #[serde(rename="teamName")]
-    pub (crate) team_name: String,
+    pub (crate) team_name: Option<String>,
     pub (crate) social: Option<Social>,
     pub (crate) league: IDName,
     pub (crate) division: Option<IDName>,
@@ -75,8 +75,8 @@ impl From<TeamDeserialize> for Team {
         Team {
             id: team.id,
             sport_id: team.sport.id.unwrap(),
-            team_city_name: team.name,
-            team_name: team.team_name,
+            team_city_name: team.name.unwrap_or_default(),
+            team_name: team.team_name.unwrap_or_default(),
             division_name,
             league_name: team.league.name,
             // twitter: team.social.unwrap_or(twitter[0].clone(),

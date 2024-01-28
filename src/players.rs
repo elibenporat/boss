@@ -1,15 +1,23 @@
 /// The players module contains all the metadata for players. We're going to build up a lot of metadata here, including awards, injury history and draft history.
 /// We'll create 3 separate files, one for the player's metadata, and one each for the injuries and awards. Player data will need to be refreshed monthly in order
 /// to update all the history data, as well as get their most recent weight.
-/// 
 
 
 
 use serde::{Deserialize, Serialize};
-use std::collections::hash_map::HashMap;
-use crate::utils::*;
-use tree_buf::{Read, Write};
+use std::{collections::hash_map::HashMap};
+use reqwest::blocking::get as download;
+use crate::date::*;
 
+
+impl Player {
+    pub fn get_player (id: u32) -> Self {
+        let url = format!("http://statsapi.mlb.com/api/v1/people/{}?hydrate=xrefId,draft,transactions,awards,education", id);
+        let player_json = download(&url).expect("Didn't get a respone").text().expect("Couldn't download the JSON");
+        let player: People = serde_json::from_str(&player_json).expect("Couldn't convert the json file to a player");
+        player.people[0].clone().into()
+    }
+}
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct Player {
     pub id: u32,
@@ -38,6 +46,39 @@ pub struct Player {
     pub facebook_id: Option<String>,
     pub instagram_id: Option<String>,
     pub mlb_debut_date: Option<Date>,
+}
+
+impl Default for Player {
+    fn default() -> Self {
+        Self {
+            id: 0,
+            name: "".to_string(),
+            birth_city: None,
+            birth_state_province: None,
+            birth_country: None,
+            height_str: None,
+            height_in: 72,
+            weight: None,
+            highschool_city: None,
+            highschool_prov_state: None,
+            college_name: None,
+            bat_side_code: None,
+            bat_side_description: None,
+            throws_code: None,
+            throws_description: None,
+            birth_date: None,
+            draft_school_name: None,
+            draft_year: None,
+            draft_pick_round: None,
+            draft_pick_number: None,
+            fangraphs_id: None,
+            retrosheet_id: None,
+            twitter_id: None,
+            facebook_id: None,
+            instagram_id: None,
+            mlb_debut_date: None,
+        }
+    }
 }
 
 impl From <PlayerDeserialize> for Player {
@@ -104,7 +145,7 @@ impl From <PlayerDeserialize> for Player {
 
         Player {
             id: player.id,
-            name: player.name,
+            name: player.name.unwrap_or("".to_string()),
             birth_city: player.birth_city,
             birth_state_province: player.birth_state_province,
             birth_country: player.birth_country,
@@ -147,7 +188,7 @@ pub (crate) struct People {
 pub (crate) struct PlayerDeserialize {
     pub (crate) id: u32,
     #[serde(alias="fullName")]
-    pub (crate) name: String,
+    pub (crate) name: Option<String>,
     #[serde(alias="birthCity")]
     pub (crate) birth_city: Option<String>,
     #[serde(alias="birthStateProvince", alias="birthState")]
@@ -172,15 +213,15 @@ pub (crate) struct PlayerDeserialize {
     pub (crate) draft_year: Option<u16>,
 }
 
-#[serde(rename_all="camelCase")]
 #[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all="camelCase")]
 pub (crate) struct IDType {
     pub (crate) xref_id: String,
     pub (crate) xref_type: String,
 }
 
-#[serde(rename_all="camelCase")]
 #[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all="camelCase")]
 pub (crate) struct Draft {
     pub (crate) pick_round: String,
     pub (crate) pick_number: u16,
@@ -216,7 +257,7 @@ pub (crate) struct Side {
     pub (crate) description: Option<SideDescription>,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone, Copy, Read, Write, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq)]
 pub enum SideCode {
     R,
     L,
@@ -224,7 +265,7 @@ pub enum SideCode {
     B,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone, Copy, Read, Write, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq)]
 pub enum SideDescription {
     Right,
     Left,

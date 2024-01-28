@@ -10,18 +10,18 @@
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap};
 use regex::Regex;
-use tree_buf::{Read, Write};
 
 //Horrible hack to allow us to pull in the players. Somewhat brittle, but can't figure
 //out a better way to do it
 pub (crate) fn fix_boxscore (boxscore: &str) -> String {
-  let regex = Regex::new(r#""ID\d{6}" : "#).unwrap();
+  let regex = Regex::new(r#""ID\d{6}":"#).unwrap();
   let regex_ws = Regex::new(r"\s+").unwrap();
 
   regex
     .replace_all(&regex_ws.replace_all(boxscore, " "), "")
-    .replace("players\" : {", "players\" : [")
-    .replace("}, \"batters\"", "], \"batters\"")
+    .replace("players\":{", "players\":[")
+    .replace("},\"batters\"", "],\"batters\"")
+
 }
 
 /// BoxScoreData cannot be built from deserialized data since they don't contain the game_pk.
@@ -38,8 +38,8 @@ pub struct BoxScoreData {
 pub struct BoxScore {
   pub attendance: Option<u32>,
   pub first_pitch: Option<f32>,
-  pub game_weather_temp_f: Option<u8>,
-  pub game_weather_temp_c: Option<i8>,
+  pub game_weather_temp_f: Option<f32>,
+  pub game_weather_temp_c: Option<f32>,
   pub game_weather_condition: Option<WeatherCondition>,
   pub game_wind_speed_mph: Option<u8>,
   pub game_wind_direction: Option<WindDirection>,
@@ -135,8 +135,8 @@ impl From <Vec<Player>> for Defense {
   }
 }
 
-fn f_to_c (t: u8) -> i8 {
-  ((t - 32) as f32 * (5f32 / 9f32)) as i8
+fn f_to_c (t: f32) -> f32 {
+    (t - 32.)  * (5f32 / 9f32)
 }
 
 impl From <BoxScoreDe> for BoxScore {
@@ -152,7 +152,7 @@ impl From <BoxScoreDe> for BoxScore {
       Some (weather) =>  
         {
           let temp = weather.split(" ").nth(0).unwrap_or("");
-          let (deg_f, deg_c) = match temp.parse::<u8>() {
+          let (deg_f, deg_c) = match temp.parse::<f32>() {
             Ok(temp) => (Some(temp), Some (f_to_c(temp))),
             _ => (None, None),
           };
@@ -251,9 +251,9 @@ impl From <BoxScoreDe> for BoxScore {
       away_league_id: box_score.teams.away.team.league.id,
       away_league_name: box_score.teams.away.team.league.name,
       home_division_id,
-      home_division_name,
+      home_division_name: home_division_name.unwrap_or_default(),
       away_division_id,
-      away_division_name,
+      away_division_name: away_division_name.unwrap_or_default(),
       
       home_sport_id: box_score.teams.home.team.sport.id,
       away_sport_id: box_score.teams.away.team.sport.id,
@@ -400,7 +400,7 @@ fn player_id_to_player (players: Vec<PlayerID>) -> Vec<Player> {
 #[serde(rename_all="camelCase")]
 pub (crate) struct PlayerID {
     pub (crate) person: Person,
-    pub (crate) position: Position,
+    pub (crate) position: Option<Position>,
     pub (crate) batting_order: Option<String>,
     pub (crate) stats: Option<Stats>,
     pub (crate) all_positions: Option<Vec<Position>>,
@@ -432,7 +432,13 @@ impl From<PlayerID> for Player {
 
     let pos = match player.all_positions {
       Some (position) => position[0].abbreviation, 
-      None => player.position.abbreviation,
+      None => {
+        match player.position {
+          Some (pos) => pos.abbreviation,
+          None => Pos::Bench,
+        }
+      },
+
     };
 
     let position = match pos {
@@ -484,7 +490,7 @@ pub (crate) struct LeagueIDName {
 pub (crate) struct IDName {
   pub (crate) id: u32,
   #[serde(alias="fullName")]
-  pub (crate) name: String,
+  pub (crate) name: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -498,7 +504,7 @@ pub (crate) struct Position {
   pub (crate) abbreviation: Pos,
 }
 
-#[derive(Deserialize, Serialize, Debug, Hash, Eq, PartialEq, Copy, Clone, Read, Write)]
+#[derive(Deserialize, Serialize, Debug, Hash, Eq, PartialEq, Copy, Clone)]
 pub enum Pos {
   #[serde(rename="C")]
   Catcher,

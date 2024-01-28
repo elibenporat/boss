@@ -1,12 +1,11 @@
 //! Module for tracking level of play, referred to as "Sport" by the API. The list of sports are rather limited, so we'll hardcode
 //! everything manually here. This will allow us the flexibility to group various levels together for a better end-user experience.
 //! 
-//! The full list of sports can be found at http://statsapi.mlb.com/api/v1/sports/ and as of Dec 2019, they are all hardcoded in this module.
+//! The full list of sports can be found at http://statsapi.mlb.com/api/v1/sports/ and as of Mar 2023, they are all hardcoded in this module.
 //! 
 //! 
 
 use serde::{Serialize, Deserialize};
-use tree_buf::{Read, Write};
 
 pub fn test_sports() {
     
@@ -46,7 +45,7 @@ pub struct Sport {
     pub level_of_play_rank: u8,
 }
 
-#[derive(Debug, Copy, Clone, Serialize, Deserialize, Read, Write, PartialEq)]
+#[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]
 pub enum MLB {
     MLB,
     Minors,

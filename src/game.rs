@@ -3,19 +3,20 @@
 //! 
 #![allow(unused)]
 
+use crate::nathan::Data;
 // use crate::metadata::MetaData;
 use crate::players::{Player, SideCode as BatSideCode, SideDescription as BatSideDescription};
-use crate::play_by_play::{RunnerData, Code, PlayEventType, Event, Trajectory, HalfInning, Hardness, SideCode, SideDescription, PitchTypeCode, PitchTypeDescription, AllPlays};
+use crate::play_by_play::{RunnerData, Code, PlayEventType, Event, Trajectory, HalfInning, Hardness, SideCode, SideDescription, PitchTypeCode, PitchTypeDescription, AllPlays, PlateAppearanceData};
 use crate::boxscore::{Pos, WeatherCondition, WindDirection, BoxScoreData};
-use crate::schedule::{GameType, GameTypeDescription, AbstractGameState, GameMetaData};
+use crate::schedule::{GameType, GameTypeDescription, AbstractGameState, GameMetaData, GameDate};
 use crate::venues::{SurfaceType, RoofType, TimeZone, VenueData, VenueXY, Venue};
 use crate::coaches::CoachData;
-use crate::feed_live::FeedData;
 use crate::team::{TeamData, Team};
 use crate::metadata::MetaData;
-use crate::utils::Date;
+use crate::date::Date;
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
+use core::f64::consts::*;
 
 
 pub (crate) struct GameData <'m> {
@@ -37,6 +38,8 @@ pub enum PitcherSPRP {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Pitch {
   
+    pub play_id: String,
+
     //at_bat level meta-data
     pub half_inning: HalfInning,
     pub num_plate_appearance: u8,
@@ -71,31 +74,6 @@ pub struct Pitch {
     pub hp_umpire_age: Option<f32>,
     pub hp_umpire_height: Option<u8>,
     pub hp_umpire_height_str: Option<String>,
-
-    pub batting_coach: Option<u32>,
-    pub batting_coach_name: Option<String>,
-    pub batting_coach_dob: String,
-    pub batting_coach_age: Option<f32>,
-    pub batting_coach_mlb_exp: Option<bool>,
-
-    pub batting_manager: Option<u32>,
-    pub batting_manager_name: Option<String>,
-    pub batting_manager_dob: String,
-    pub batting_manager_age: Option<f32>,
-    pub batting_manager_mlb_exp: Option<bool>,
-
-    pub pitching_coach: Option<u32>,
-    pub pitching_coach_name: Option<String>,
-    pub pitching_coach_dob: String,
-    pub pitching_coach_age: Option<f32>,
-    pub pitching_coach_mlb_exp: Option<bool>,
-
-    pub pitching_manager: Option<u32>,
-    pub pitching_manager_name: Option<String>,
-    pub pitching_manager_dob: String,
-    pub pitching_manager_age: Option<f32>,
-    pub pitching_manager_mlb_exp: Option<bool>,
-
 
     pub pitcher: u32,
     pub pitcher_team_id: u32,
@@ -169,7 +147,7 @@ pub struct Pitch {
     ///Did the pitch have a pickoff play right before it?
     pub preceded_by_pickoff: bool,
 
-    //Is it possible to turn a double play on a ground ball? We only
+    //Is it possible to turn a double play on a ground ball? 
     pub double_play_opportunity: bool,
 
     //RE288 State
@@ -196,31 +174,63 @@ pub struct Pitch {
     pub foul: u8,
     pub bunt: Option<bool>,
 
-    pub pitch_speed_start: Option<f32>,
-    pub pitch_speed_end: Option<f32>,
-    pub pitch_break_length: Option<f32>,
-    pub pitch_break_y: Option<f32>,
-    pub pitch_spin_rate: Option<f32>,
-    pub pitch_spin_direction: Option<f32>,
-    pub pitch_plate_time: Option<f32>,
-    pub pitch_extension: Option<f32>,
-    pub pitch_pixels_x: Option<f32>,
-    pub pitch_pixels_y: Option<f32>,
-    pub pitch_a_x: Option<f32>,
-    pub pitch_a_y: Option<f32>,
-    pub pitch_a_z: Option<f32>,
-    pub pitch_pfx_x: Option<f32>,
-    pub pitch_pfx_z: Option<f32>,
-    pub pitch_p_x: Option<f32>,
-    pub pitch_p_z: Option<f32>,
-    pub pitch_v_x0: Option<f32>,
-    pub pitch_v_y0: Option<f32>,
-    pub pitch_v_z0: Option<f32>,
-    pub pitch_x0: Option<f32>,
-    pub pitch_y0: Option<f32>,
-    pub pitch_z0: Option<f32>,
+    pub description: String,
+    pub plate_appearance_description: String,
+    pub plate_appearance_result: Option<Event>,
+
+    pub pitch_speed_start: Option<f64>,
+    pub pitch_speed_end: Option<f64>,
+    pub pitch_break_vertical_induced: Option<f64>,
+    pub pitch_break_horizontal: Option<f64>,
+    pub pitch_spin_rate: Option<f64>,
+    pub pitch_spin_direction: Option<f64>,
+    pub pitch_plate_time: Option<f64>,
+    pub pitch_extension: Option<f64>,
+    pub pitch_pixels_x: Option<f64>,
+    pub pitch_pixels_y: Option<f64>,
+    pub pitch_a_x: Option<f64>,
+    pub pitch_a_y: Option<f64>,
+    pub pitch_a_z: Option<f64>,
+    pub pitch_pfx_x: Option<f64>,
+    pub pitch_pfx_z: Option<f64>,
+    pub pitch_p_x: Option<f64>,
+    pub pitch_p_z: Option<f64>,
+    pub pitch_v_x0: Option<f64>,
+    pub pitch_v_y0: Option<f64>,
+    pub pitch_v_z0: Option<f64>,
+    pub pitch_x0: Option<f64>,
+    pub pitch_y0: Option<f64>,
+    pub pitch_z0: Option<f64>,
     pub pitch_type_code: Option<PitchTypeCode>,
     pub pitch_type_desc: Option<PitchTypeDescription>,
+
+    pub xr: Option<f64>,
+    pub yr: Option<f64>,
+    pub zr: Option<f64>,
+    pub tr: Option<f64>,
+    pub vxr: Option<f64>,
+    pub vyr: Option<f64>,
+    pub vzr: Option<f64>,
+    pub tf: Option<f64>,
+    pub vxbar: Option<f64>,
+    pub vybar: Option<f64>,
+    pub vzbar: Option<f64>,
+    pub vbar: Option<f64>,
+    pub vxhat: Option<f64>,
+    pub vyhat: Option<f64>,
+    pub vzhat: Option<f64>,
+    pub ad: Option<f64>,
+    pub atx: Option<f64>,
+    pub aty: Option<f64>,
+    pub atz: Option<f64>,
+    pub atx_hat: Option<f64>,
+    pub aty_hat: Option<f64>,
+    pub atz_hat: Option<f64>,
+    pub at: Option<f64>,
+    pub phi_t: Option<f64>,
+    pub ivb: Option<f64>,
+    pub hb: Option<f64>,
+    pub cd: Option<f64>,
 
     //1B, 2B, 3B, HR, strikeout, walk for easy summing in analytical tools
     pub in_play_result: Option<Event>,
@@ -236,17 +246,17 @@ pub struct Pitch {
     pub fielded_by_name: String,
 
     // hit data
-    pub hit_data_coord_x: Option<f32>, 
-    pub hit_data_coord_y: Option<f32>, 
+    pub hit_data_coord_x: Option<f64>, 
+    pub hit_data_coord_y: Option<f64>, 
     pub hit_data_trajectory: Option<Trajectory>,
     pub hit_data_contact_quality: Option<Hardness>,
     pub hit_data_launch_angle: Option<f32>,
     pub hit_data_exit_velocity: Option<f32>,
     pub hit_data_total_distance: Option<f32>,
     //Angle from 0 = 3B/LF Line to 90 1B/RF Line
-    pub hit_data_spray_angle: Option<f32>,
+    pub hit_data_spray_angle: Option<f64>,
     //distance calculated from spray chart
-    pub hit_data_calc_distance: Option<f32>,
+    pub hit_data_calc_distance: Option<f64>,
 
 
 
@@ -262,10 +272,9 @@ pub struct Pitch {
     pub sport_affilliation: crate::sports::MLB,
     pub sport_level_of_play: u8,
     
-    pub league_name_home: Option<String>,
-    pub league_name_away: Option<String>,
-    pub division_name_home: Option<String>,
-    pub division_name_away: Option<String>,
+    pub team_name_home: String,
+    pub team_name_away: String,
+
 
     // Game Level MetaData
     pub game_pk: u32,
@@ -300,20 +309,17 @@ pub struct Pitch {
     pub venue_latitude: Option<f32>,
     pub venue_longitude: Option<f32>,
 
+    pub league_name: String,
+
     //Boxscore MetaData
     pub game_attendance: Option<u32>,
     pub game_first_pitch: Option<f32>,
-    pub game_weather_temp_f: Option<u8>,
-    pub game_weather_temp_c: Option<i8>,
+    pub game_weather_temp_f: Option<f32>,
+    pub game_weather_temp_c: Option<f32>,
     pub game_weather_condition: Option<crate::boxscore::WeatherCondition>,
     pub game_wind_speed_mph: Option<u8>,
     pub game_wind_direction: Option<crate::boxscore::WindDirection>,   
     
-    pub official_scorer_id: Option<u32>,
-    pub official_scorer_name: Option<String>,
-    pub primary_datacaster_id: Option<u32>,
-    pub primary_datacaster_name: Option<String>,
-
 }
 
 // Get the player name for our player map and unwrap safely. If we don't have
@@ -335,7 +341,7 @@ fn get_name (id: Option<u32>, player_map: &HashMap<u32, Player>) -> Option<Strin
 
 // Get the coach data. We probably should just implement Default for Coach, but we're
 // going to handle the null case here.
-fn get_coach (id: Option<u32>, game_date:Date, coach_map: &HashMap<u32, Player>) -> 
+fn get_coach (id: Option<u32>, game_date: GameDate, coach_map: &HashMap<u32, Player>) -> 
     (Option<u32>, Option<String>, Option<Date>, Option<f32>, Option<bool>) 
 {
 
@@ -347,7 +353,7 @@ fn get_coach (id: Option<u32>, game_date:Date, coach_map: &HashMap<u32, Player>)
                 Some (coach) => {
                     //Check here for a bad unwrap. Fix this later.
                     let age = match coach.birth_date {
-                        Some (dob) =>  Some(game_date - dob),
+                        Some (dob) =>  Some(game_date - dob.into()),
                         None => None,
                     };
                     (id, Some(coach.clone().name), coach.birth_date, age, Some(coach.mlb_debut_date.is_some()))
@@ -361,7 +367,7 @@ fn get_coach (id: Option<u32>, game_date:Date, coach_map: &HashMap<u32, Player>)
 }
 
 
-fn get_ump (id: Option<u32>, game_date:Date, ump_map: &HashMap<u32, Player>) -> 
+fn get_ump (id: Option<u32>, game_date: GameDate, ump_map: &HashMap<u32, Player>) -> 
     (Option<String>, Option<Date>, Option<f32>, Option<u8>, Option<String>) 
 {
 
@@ -373,7 +379,7 @@ fn get_ump (id: Option<u32>, game_date:Date, ump_map: &HashMap<u32, Player>) ->
                 Some (ump) => (
                     {
                         let age = match ump.birth_date {
-                        Some (dob) =>  Some(game_date - dob),
+                        Some (dob) =>  Some(game_date - dob.into()),
                         None => None,
                         };
                         (Some(ump.clone().name), ump.birth_date, age, Some(ump.height_in), ump.clone().height_str)
@@ -417,13 +423,10 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
         };
 
         //Handle the case where we don't have coach metadata
-        let coaches = match data.meta_data.coaches.get(&game_pk) {
-            Some (coaches) => coaches.to_owned(),
-            None => CoachData::default(),
-        };
-
-        //We handle the case where we don't have scorer/datacaster metadata later
-        let scorer_meta = data.meta_data.feed.get(&game_pk);
+        // let coaches = match data.meta_data.coaches.get(&game_pk) {
+        //     Some (coaches) => coaches.to_owned(),
+        //     None => CoachData::default(),
+        // };
 
         // We handle the None case later
         let venue_x_y = data.meta_data.venue_x_y.get(&sched_meta.game_venue_id);
@@ -471,12 +474,6 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
             Some (venue) => (venue.x.unwrap_or(crate::STADIUM_X), venue.y.unwrap_or(crate::STADIUM_Y)),
             None => (crate::STADIUM_X, crate::STADIUM_Y),
         };
-
-        let (official_scorer_id, official_scorer_name, primary_datacaster_id, primary_datacaster_name) = match scorer_meta {
-            Some (meta) => (meta.official_scorer_id, meta.official_scorer_name.clone(), meta.primary_datacaster_id, meta.primary_datacaster_name.clone()),
-            None => (None, None, None, None),
-        };
-
 
         // Set the initial half-inning state that we check against
         let mut previous_half_inning = HalfInning::Top;
@@ -544,14 +541,34 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
             }
             
             // Each plate appearance may only update a subset of active runners. We'll need to keep a
-            // state machine to keep track of all active runners. Also, 
+            // state machine to keep track of all active runners. 
             
             // let runner_data = plate_app.runners;
 
 
+            // let batter_expect = format!("Couldn't find data for batter id: {}", &batter);
+            // let pitcher_expect = format!("Couldn't find data for pitcher id: {}", &pitcher);
+            
+            // let batter_details = player_meta.get(&batter).unwrap_or_default().clone();
+            // let pitcher_details = player_meta.get(&pitcher).unwrap_or_default().clone();
 
-            let batter_details = player_meta.get(&batter).unwrap().clone();
-            let pitcher_details = player_meta.get(&pitcher).unwrap().clone();
+            let player_def = Player::default();
+            
+            let batter_details = match player_meta.get(&batter) {
+                Some (batter_det) => batter_det,
+                None => {
+                    // dbg!(&batter);
+                    &player_def
+                },
+            };
+
+            let pitcher_details = match player_meta.get(&pitcher) {
+                Some (pitcher_det) => pitcher_det,
+                None => {
+                    // dbg!(&pitcher);
+                    &player_def
+                },
+            };
 
             let batter_dob = match batter_details.birth_date {
                 Some (dob) => dob.to_string(),
@@ -570,41 +587,41 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
                 None => "".to_string(),
             };
 
-            let (batting_coach, pitching_coach, batting_manager, pitching_manager) = match half_inning {
-                HalfInning::Top =>
-                    ( coaches.away_coaches.batting_coach, coaches.home_coaches.pitching_coach,
-                      coaches.away_coaches.manager, coaches.home_coaches.manager,
-                    ),
-                HalfInning::Bottom =>
-                    ( coaches.home_coaches.batting_coach, coaches.away_coaches.pitching_coach,
-                      coaches.home_coaches.manager, coaches.away_coaches.manager,
-                    ),
-            };
+            // let (batting_coach, pitching_coach, batting_manager, pitching_manager) = match half_inning {
+            //     HalfInning::Top =>
+            //         ( coaches.away_coaches.batting_coach, coaches.home_coaches.pitching_coach,
+            //           coaches.away_coaches.manager, coaches.home_coaches.manager,
+            //         ),
+            //     HalfInning::Bottom =>
+            //         ( coaches.home_coaches.batting_coach, coaches.away_coaches.pitching_coach,
+            //           coaches.home_coaches.manager, coaches.away_coaches.manager,
+            //         ),
+            // };
 
-            let batting_coach_details = get_coach(batting_coach, sched_meta.game_date, &player_meta);
-            let pitching_coach_details = get_coach(pitching_coach, sched_meta.game_date, &player_meta);
-            let batting_manager_details = get_coach(batting_manager, sched_meta.game_date, &player_meta);
-            let pitching_manager_details = get_coach(pitching_manager, sched_meta.game_date, &player_meta);
+            // let batting_coach_details = get_coach(batting_coach, sched_meta.game_date, &player_meta);
+            // let pitching_coach_details = get_coach(pitching_coach, sched_meta.game_date, &player_meta);
+            // let batting_manager_details = get_coach(batting_manager, sched_meta.game_date, &player_meta);
+            // let pitching_manager_details = get_coach(pitching_manager, sched_meta.game_date, &player_meta);
 
-            let batting_coach_dob = match batting_coach_details.2 {
-                Some (dob) => dob.to_string(),
-                None => "".to_string(),
-            };
+            // let batting_coach_dob = match batting_coach_details.2 {
+            //     Some (dob) => dob.to_string(),
+            //     None => "".to_string(),
+            // };
 
-            let pitching_coach_dob = match pitching_coach_details.2 {
-                Some (dob) => dob.to_string(),
-                None => "".to_string(),
-            };
+            // let pitching_coach_dob = match pitching_coach_details.2 {
+            //     Some (dob) => dob.to_string(),
+            //     None => "".to_string(),
+            // };
 
-            let batting_manager_dob = match batting_manager_details.2 {
-                Some (dob) => dob.to_string(),
-                None => "".to_string(),
-            };
+            // let batting_manager_dob = match batting_manager_details.2 {
+            //     Some (dob) => dob.to_string(),
+            //     None => "".to_string(),
+            // };
 
-            let pitching_manager_dob = match pitching_manager_details.2 {
-                Some (dob) => dob.to_string(),
-                None => "".to_string(),
-            };
+            // let pitching_manager_dob = match pitching_manager_details.2 {
+            //     Some (dob) => dob.to_string(),
+            //     None => "".to_string(),
+            // };
 
 
             //Set the defensive and offensive players
@@ -614,12 +631,12 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
             };
 
             let batter_age = match batter_details.birth_date {
-                Some (age) => Some(sched_meta.game_date - age),
+                Some (age) => Some(sched_meta.game_date - age.into()),
                 None => None,
             };
 
             let pitcher_age = match pitcher_details.birth_date {
-                Some (age) => Some(sched_meta.game_date - age),
+                Some (age) => Some(sched_meta.game_date - age.into()),
                 None => None,
             };
 
@@ -802,7 +819,7 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
                     PlayEventType::Pickoff => {
                         preceded_by_pickoff = true;
                     }
-                    PlayEventType::NoPitch => {
+                    PlayEventType::NoPitch | PlayEventType::Stepoff => {
                         // Do Nothing Here
                     }
                     PlayEventType::Pitch => {
@@ -860,42 +877,55 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
                         let mut swing_and_miss = None;
                         let mut foul = 0;
 
-                        match event.details.code.unwrap_or(Code::Other) {
-                            // Ball or Ball in Dirt
-                            Code::BD | Code::B => {
+                        match event.details.code.unwrap() {
+                            // Ball or Ball in Dirt or Hit Batter
+                            Code::BD | Code::B | Code::P | Code::I | Code::H | Code::VS | Code::VC | Code::VB | Code::VP | Code::V  => {
                                 // balls_end = balls_start + 1;
                                 
                                 swing = 0;
                             },
                             
-                            // Called Strike
-                            Code::C => {
+                            // Called Strike or Automating strike
+                            Code::C | Code::A | Code::AC | Code::AB => {
                                 // strikes_end = strikes_start +1;
                                 swing = 0;
                             },
                             
-                            //Swinging Strike or Foul Bunt
-                            Code::S | Code::L => {
+                            //Swinging Strike or Swinging Strike Blocked or missed bunt
+                            Code::S  | Code::W | Code::Q | Code::M => {
                                 // strikes_end = strikes_start + 1;
                                 swing = 1;
                                 swing_and_miss = Some(1);
                             },
 
                             //Foul Ball
-                            Code::F => {
+                            Code::F | Code::R | Code::L  => {
                                 foul = 1;
                                 // if strikes_start < 2 {strikes_end = strikes_start + 1};
                                 swing = 1;
+                                swing_and_miss = Some(0);
+                            },
+                            // Foul Tip
+                            Code::T | Code::O=> {
+                                foul = 1;
+                                // if strikes_start < 2 {strikes_end = strikes_start + 1};
+                                swing = 1;
+                                swing_and_miss = Some(1);
                             },
 
                             //In Play
-                            Code::D | Code::E | Code::X => {
+                            Code::D | Code::E | Code::X | Code::J| Code::Y  | Code::Z => {
                                 swing = 1;
                                 swing_and_miss = Some (0);
                             },
 
-                            // All other cases, such as POs
-                            _ => {},
+                            // No Pitch
+                            Code::N | Code::PSO | Code::PO => {
+
+                            }
+
+                            // All other cases, such as POs we PANIC as we want to classify them all
+                            // _ => {panic!("Missing logic for Code")}
                         };
                         
                         // There are in some cases extra pitches, so we always correct to the count given
@@ -911,14 +941,14 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
                         //if our event type is a pitch, we can safely unwrap the pitch_data
                         let pitch_data = event.pitch_data.unwrap();
                         
-                        let (pitch_break_length, pitch_break_y, pitch_spin_rate, pitch_spin_direction) = match pitch_data.breaks {
+                        let (pitch_break_vertical_induced, pitch_break_horizontal, pitch_spin_rate, pitch_spin_direction) = match pitch_data.breaks {
                             Some (breaks) => 
-                                (breaks.break_length, breaks.break_y, breaks.spin_rate,breaks.spin_direction),
+                                (breaks.break_vertical_induced, breaks.break_horizontal, breaks.spin_rate,breaks.spin_direction),
                             None => (None, None, None, None),
                         };
 
                         let (pitch_type_code, pitch_type_desc) = match event.details.pitch_type {
-                            Some (pitch_type) => (Some(pitch_type.code), pitch_type.description),
+                            Some (pitch_type) => (Some(pitch_type.code.unwrap_or(PitchTypeCode::UN)), Some(pitch_type.description.unwrap_or(PitchTypeDescription::Unknown))),
                             None => (None, None),
                         };
 
@@ -953,18 +983,18 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
                         let (hit_data_spray_angle, hit_data_calc_distance) = match (hit_data_coord_x, hit_data_coord_y) {
                             (Some(x), Some(y)) => 
                                 {
-                                    let x_2 = (venue_home_plate_x - x) * (venue_home_plate_x - x) ;
-                                    let y_2 = (venue_home_plate_y - y) * (venue_home_plate_y - y) ;
+                                    let x_2 = (venue_home_plate_x as f64 - x) * (venue_home_plate_x as f64 - x) ;
+                                    let y_2 = (venue_home_plate_y as f64 - y) * (venue_home_plate_y as f64 - y) ;
                                     
                                     let hit_data_calc_distance = (x_2 + y_2).sqrt();
                                     
-                                    use std::f32::consts::PI;
+                                    
 
-                                    let temp_angle = ((venue_home_plate_y - y)/hit_data_calc_distance).acos()/PI*180f32;
+                                    let temp_angle = ((venue_home_plate_y as f64 - y)/hit_data_calc_distance).acos()/PI*180f64;
 
-                                    let hit_data_spray_angle = match (x < venue_home_plate_x) {
-                                        true =>  45f32 - temp_angle,
-                                        false => 45f32 + temp_angle,
+                                    let hit_data_spray_angle = match (x < venue_home_plate_x as f64) {
+                                        true =>  45f64 - temp_angle,
+                                        false => 45f64 + temp_angle,
                                     };
 
                                     (Some(hit_data_spray_angle), Some(hit_data_calc_distance))
@@ -992,8 +1022,78 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
                             HalfInning::Bottom => (pitcher_sp_rp.1, pitcher_num_plate_appearance_game.1, pitcher_num_pitch_game.1)
                         };
 
+                        let team_name_home = if half_inning == HalfInning::Top {pitcher_team_name.clone()} else {batter_team_name.clone()};
+                        let team_name_away = if half_inning == HalfInning::Top {batter_team_name.clone()} else {pitcher_team_name.clone()};
+
+                        let enough_pitch_data: bool = 
+                                pitch_data.coordinates.v_y0.is_some() 
+                            &&  pitch_data.coordinates.v_x0.is_some() 
+                            &&  pitch_data.coordinates.v_z0.is_some() 
+                            &&  pitch_data.coordinates.a_y.is_some()
+                            &&  pitch_data.coordinates.a_x.is_some()
+                            &&  pitch_data.coordinates.a_z.is_some()
+                            &&  pitch_data.coordinates.y0.is_some()
+                            &&  pitch_data.coordinates.x0.is_some()
+                            &&  pitch_data.coordinates.z0.is_some()
+                            &&  pitch_data.coordinates.p_x.is_some()
+                            &&  pitch_data.coordinates.p_z.is_some()
+                            &&  pitch_data.extension.is_some();
+
+                        let nathan_data : crate::nathan::Nathan = if enough_pitch_data {
+                        
+                            crate::nathan::Data {
+                                extension: pitch_data.extension.expect("Missing a variable for pitch details"),
+                                vy0: pitch_data.coordinates.v_y0.expect("Missing a variable for pitch details"),
+                                vx0: pitch_data.coordinates.v_x0.expect("Missing a variable for pitch details"),
+                                vz0: pitch_data.coordinates.v_z0.expect("Missing a variable for pitch details"),
+                                ay: pitch_data.coordinates.a_y.expect("Missing a variable for pitch details"),
+                                ax: pitch_data.coordinates.a_x.expect("Missing a variable for pitch details"),
+                                az: pitch_data.coordinates.a_z.expect("Missing a variable for pitch details"),
+                                plate_x: pitch_data.coordinates.p_x.expect("Missing a variable for pitch details"),
+                                plate_z: pitch_data.coordinates.p_z.expect("Missing a variable for pitch details"),
+                                x0: pitch_data.coordinates.x0.expect("Missing a variable for pitch details"),
+                                y0: pitch_data.coordinates.y0.expect("Missing a variable for pitch details"),
+                                z0: pitch_data.coordinates.z0.expect("Missing a variable for pitch details"),
+                            }.into()}
+                            else {
+                                crate::nathan::Nathan::default() 
+                            }                           
+                            ;
+
+                        let plate_appearance_description = plate_app.result.plate_appearance_result_description.clone().unwrap_or_default();
+                        
+                        let imputed_hit_trajectory: Option<Trajectory> = if event.details.is_in_play.unwrap() {
+                                 if plate_appearance_description.contains("line drive") {Some(Trajectory::LineDrive)}
+                            else if plate_appearance_description.contains("lines out") {Some(Trajectory::LineDrive)}
+                            else if plate_appearance_description.contains("flies out") {Some(Trajectory::FlyBall)}
+                            else if plate_appearance_description.contains("fly ball") {Some(Trajectory::FlyBall)}
+                            else if plate_appearance_description.contains("ground ball") {Some(Trajectory::GroundBall)}
+                            else if plate_appearance_description.contains("grounds out") {Some(Trajectory::GroundBall)}
+                            else if plate_appearance_description.contains("pop fly") {Some(Trajectory::PopUp)}
+                            else if plate_appearance_description.contains("pops out") {Some(Trajectory::PopUp)}
+                            else {Some(Trajectory::Unknown)}  
+                        } else {None};
+                        
+
+                        let hit_data_trajectory = match hit_data_trajectory {
+                            None => imputed_hit_trajectory,
+                            _ => hit_data_trajectory,
+                        };
+
+                        let bunt_description = if event.details.is_in_play.unwrap() {
+                            Some ( event.details.description.clone().unwrap_or_default().contains("bunt"))
+                        } else {None};
+                       
+                        let bunt = match bunt {
+                            Some(b) => Some (b),
+                            None => bunt_description,
+                        };
+
                         pitches.push(
                             Pitch {
+                                
+                                play_id: event.play_id.unwrap_or_default(),
+
                                 half_inning,
                                 num_plate_appearance,
                                 num_inning,
@@ -1016,31 +1116,7 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
                                 third_base_name: get_name(defense.third_base, &player_meta),
                                 left_field_name: get_name(defense.left_field, &player_meta),
                                 center_field_name: get_name(defense.center_field, &player_meta),
-                                right_field_name: get_name(defense.right_field, &player_meta),
-                                
-                                batting_coach,
-                                batting_coach_name: batting_coach_details.1.clone(),
-                                batting_coach_dob: batting_coach_dob.clone(),
-                                batting_coach_age: batting_coach_details.3,
-                                batting_coach_mlb_exp: batting_coach_details.4,
-        
-                                pitching_coach,
-                                pitching_coach_name: pitching_coach_details.1.clone(),
-                                pitching_coach_dob: pitching_coach_dob.clone(),
-                                pitching_coach_age: pitching_coach_details.3,
-                                pitching_coach_mlb_exp: pitching_coach_details.4,
-
-                                batting_manager,
-                                batting_manager_name: batting_manager_details.1.clone(),
-                                batting_manager_dob: batting_manager_dob.clone(),
-                                batting_manager_age: batting_manager_details.3,
-                                batting_manager_mlb_exp: batting_manager_details.4,
-        
-                                pitching_manager,
-                                pitching_manager_name: pitching_manager_details.1.clone(),
-                                pitching_manager_dob: pitching_manager_dob.clone(),
-                                pitching_manager_age: pitching_manager_details.3,
-                                pitching_manager_mlb_exp: pitching_manager_details.4,      
+                                right_field_name: get_name(defense.right_field, &player_meta),  
 
                                 hp_umpire_id,
                                 hp_umpire_name: hp_details.0.clone(), 
@@ -1056,10 +1132,8 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
                                 sport_affilliation: sport_details.affiliation,
                                 sport_level_of_play: sport_details.level_of_play_rank,
 
-                                division_name_home: box_meta.home_division_name.clone(),
-                                division_name_away: box_meta.away_division_name.clone(),
-                                league_name_home: box_meta.home_league_name.clone(),
-                                league_name_away: box_meta.away_league_name.clone(),
+                                team_name_home,
+                                team_name_away,
 
                                 venue_id: sched_meta.game_venue_id,
                                 venue_home_plate_x,
@@ -1170,13 +1244,17 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
                                 foul,
                                 swing_and_miss,
                                 double_play_opportunity,
+
+                                description: event.details.description.unwrap_or_default(),
+                                plate_appearance_description,
+                                plate_appearance_result: plate_app.result.plate_appearance_result,
                                 
                                 in_play: event.details.is_in_play.unwrap().into(),
                                 
                                 pitch_speed_start: pitch_data.start_speed,
                                 pitch_speed_end: pitch_data.end_speed,
-                                pitch_break_length,
-                                pitch_break_y,
+                                pitch_break_vertical_induced,
+                                pitch_break_horizontal,
                                 pitch_spin_rate,
                                 pitch_spin_direction,
                                 pitch_plate_time: pitch_data.plate_time,
@@ -1222,10 +1300,6 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
                                 fielded_by_name,
                                 fielded_by_pos,
 
-                                official_scorer_id,
-                                official_scorer_name: official_scorer_name.clone(),
-                                primary_datacaster_id,
-                                primary_datacaster_name: primary_datacaster_name.clone(),
 
                                 game_pk: sched_meta.game_pk,
                                 game_type: sched_meta.game_type,
@@ -1242,7 +1316,37 @@ impl <'m> From <GameData<'m>> for Vec<Pitch> {
                                 game_attendance: box_meta.attendance,
                                 game_first_pitch: box_meta.first_pitch,
 
+                                league_name: box_meta.home_league_name.clone().unwrap_or_default(),
 
+                                //Nathan Variables
+
+                                xr: nathan_data.xr,
+                                yr: nathan_data.yr,
+                                zr: nathan_data.zr,
+                                vxr: nathan_data.vxr,
+                                vyr: nathan_data.vyr,
+                                vzr: nathan_data.vzr,
+                                tf: nathan_data.tf,
+                                tr: nathan_data.tr,
+                                vxbar: nathan_data.vxbar,
+                                vybar: nathan_data.vybar,
+                                vzbar: nathan_data.vzbar,
+                                vbar: nathan_data.vbar,
+                                vxhat: nathan_data.vxhat,
+                                vyhat: nathan_data.vyhat,
+                                vzhat: nathan_data.vzhat,
+                                ad: nathan_data.ad,
+                                atx: nathan_data.atx,
+                                aty: nathan_data.aty,
+                                atz: nathan_data.atz,
+                                atx_hat: nathan_data.atx_hat,
+                                aty_hat: nathan_data.aty_hat,
+                                atz_hat: nathan_data.atz_hat,
+                                at: nathan_data.at,
+                                phi_t: nathan_data.phi_t,
+                                ivb: nathan_data.ivb,
+                                hb: nathan_data.hb,
+                                cd: nathan_data.cd,
                                 
 
                             }

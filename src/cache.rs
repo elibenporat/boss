@@ -21,16 +21,15 @@
 //! 
 //! 
 
-use crate::utils;
+// use crate::utils;
 use crate::venues;
 use crate::schedule;
 use crate::boxscore;
-use crate::feed_live;
 use crate::coaches;
 use crate::players;
 use crate::team;
 use crate::game;
-use crate::defense;
+// use crate::defense;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use csv::{Reader, WriterBuilder};
@@ -44,15 +43,15 @@ const BOXSCORE_JSON: &str = "\\boxscore.json";
 const COACH_JSON: &str = "\\coaches.json";
 const PLAYER_JSON: &str = "\\players.json";
 const TEAMS_JSON: &str = "\\teams.json";
-const PLAY_BY_PLAY: &str = r#"F:\Baseball\baseball.csv"#;
-const DEFENSE: &str = r#"F:\Baseball\defense.csv"#;
+const PLAY_BY_PLAY: &str = r#"S:\OneDrive\Baseball\data\baseball.csv"#;
+const DEFENSE: &str = r#"S:\OneDrive\Baseball\data\defense.csv"#;
 
 fn cache_folder () -> String {
-    format!("{}{}", utils::get_directory(), "\\cache" )
+    format!("{}{}", std::env::current_dir().unwrap().display(), "\\cache" )
 }
 
 
-fn cache <T> (file_name: &str, data: Vec<T>) 
+pub fn cache <T> (file_name: &str, data: Vec<T>) 
 where T: Serialize
 {
 
@@ -64,7 +63,7 @@ where T: Serialize
 
 }
 
-fn load <T> (file_name: &str) -> Vec<T>
+pub fn load <T> (file_name: &str) -> Vec<T>
 where T: DeserializeOwned,
 // T: std::fmt::Debug,
 {
@@ -84,32 +83,20 @@ where T: DeserializeOwned,
 
 }
 
-pub (crate) fn write_defense (defense: &Vec<defense::Defense>) {
 
-    let exists = match std::fs::File::open(DEFENSE) {
-        Err (_) => false,
-        Ok (_) => true,
-    };
-
-    let file = match exists {
-        true => std::fs::OpenOptions::new().append(true).open(DEFENSE).unwrap(),
-        false => std::fs::OpenOptions::new().create(true).write(true).open(DEFENSE).unwrap()
-    };
-
-
-    let mut csv_writer = WriterBuilder::new()
-        .has_headers(!exists)
-        .from_writer(file);
-
-    for d in defense {
-        csv_writer.serialize(d).unwrap();
-    };
-
+/// Creates the cache folder if it doesn't exist.
+fn create_folder (path: String) {
+    match std::fs::create_dir(path) {
+        Ok(dir) => {dir},
+        _ => {},
+    }
 }
 
 pub (crate) fn append_play_by_play (pitches: &Vec<game::Pitch>) {
 
     // Check if the file exists to determine if we need headers and if we should create a new file
+
+    // let file_name = format!("{}\\{}", cache_folder(), PLAY_BY_PLAY);
 
     let exists = match std::fs::File::open(PLAY_BY_PLAY) {
         Err (_) => false,
@@ -129,34 +116,6 @@ pub (crate) fn append_play_by_play (pitches: &Vec<game::Pitch>) {
         csv_writer.serialize(pitch).unwrap();
     };
 
-}
-
-#[allow(unused)]
-pub fn load_play_by_play () -> Vec<game::Pitch> {
-
-    let mut csv_reader = Reader::from_path(PLAY_BY_PLAY).unwrap();
-
-    type CSVResult = Result< game::Pitch, csv::Error>;
-
-    csv_reader.deserialize()
-        .filter_map(|record: CSVResult| record.ok())
-        // .map(|record| {let pitch: game::Pitch = record.unwrap(); pitch})
-        .collect()
-        
-}
-
-#[allow(unused)]
-pub fn load_defense () -> Vec<defense::Defense> {
-
-    let mut csv_reader = Reader::from_path(DEFENSE).unwrap();
-
-    type CSVResult = Result< defense::Defense, csv::Error>;
-
-    csv_reader.deserialize()
-        .filter_map(|record: CSVResult| record.ok())
-        // .map(|record| {let pitch: game::Pitch = record.unwrap(); pitch})
-        .take(12_400_000)
-        .collect()
 }
 
 pub (crate) fn cache_teams_data (teams: &Vec<team::TeamData>) {
@@ -193,13 +152,13 @@ pub (crate) fn load_boxscore_data () -> Vec<boxscore::BoxScoreData> {
 }
 
 
-pub(crate) fn cache_feed_live_data (games: &Vec<feed_live::FeedData>) {
-    cache (FEED_LIVE_JSON, games.clone());
-}
+// pub(crate) fn cache_feed_live_data (games: &Vec<feed_live::FeedData>) {
+//     cache (FEED_LIVE_JSON, games.clone());
+// }
 
-pub (crate) fn load_feed_live_data () -> Vec<feed_live::FeedData> {
-    load (FEED_LIVE_JSON)
-}
+// pub (crate) fn load_feed_live_data () -> Vec<feed_live::FeedData> {
+//     load (FEED_LIVE_JSON)
+// }
 
 
 ///Serialize the schedule data
@@ -238,13 +197,4 @@ pub (crate) fn load_venue () -> Vec<venues::VenueData> {
 
     load (VENUE_JSON)
 
-}
-
-
-/// Creates the cache folder if it doesn't exist.
-fn create_folder (path: String) {
-    match std::fs::create_dir(path) {
-        Ok(dir) => {dir},
-        _ => {},
-    }
 }

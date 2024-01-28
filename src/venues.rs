@@ -1,127 +1,20 @@
-//! Tools for grabbing venue data, both the basic data available from the API, as well as the svg files that will tell us where homeplate is.
-//! The svg data is critical, since it will help us map the hit_data to actual coordinates on the field. It will also allow us to properly measure feet, since we'll hbe able to measure it against
-//! the field's stated dimensions. Specifically, we'll look at the data points down the left and right field lines and see the distance in (x, y) that correlate to the HR distance down the lines.
-//! This will allow us to convert the pixel distance to actual feet at the ballpark level.
-//! 
-//! We may also want to compute travel distance (flight time) from location to location, but this will be a feauture to add later.
-//! 
+/// Gathers all available venue (i.e. stadium) data, including the SVG data in order to leverage the hit chart locations. 
+
+
 
 use serde::{Deserialize, Serialize};
-// use crate::utils::*;
-use isahc::prelude::*;
-use crate::cache;
-use std::collections::BTreeSet;
-use tree_buf::{Read, Write};
+use reqwest::blocking::*;
 
-/// Link to all the venues used by the MLB Stats API. "Hydrated" fields include the location, field dimension and
-/// cross reference IDs that can be used to link to retrosheet.
-const VENUES: &str = "https://statsapi.mlb.com/api/v1/venues/?hydrate=location,fieldInfo,timezone,xrefId";
-
-
-pub fn test_venues () {
-    let venues = isahc::get(VENUES).unwrap().text().unwrap();
-
-    let venue_data: Venues = serde_json::from_str(&venues).unwrap();
- 
-
-    dbg!(&venue_data.venues[138]);
-
-    let mut venues_x_y = cache::load_venue_x_y();
-
-    let venues_cached: BTreeSet<u32> = venues_x_y
-        .iter()
-        .map(|venue| venue.id)
-        .collect()
-        ;
-
-
-    let venues_x_y_new: Vec<VenueXY> = venue_data.venues
-        .iter()
-        .filter(|venue| !venues_cached.contains(&venue.id))
-        .map(|venue| 
-            {
-                let id = venue.id;
-                let (x,y) = get_svg(id);
-                VenueXY {
-                    id, x, y
-                }
-            }
-        )
-        .collect()
-        ;
-
-    venues_x_y.extend(venues_x_y_new);
-    
-    cache::cache_venue_x_y(&venues_x_y);
-
+#[derive(Deserialize, Debug)]
+pub (crate) struct Venues {
+    pub (crate) venues: Vec<VenueDe>,
 }
-
-pub fn get_svg (id: u32) -> (Option<f32>, Option<f32>) {
-
-    let link = format!("http://mlb.mlb.com/images/gameday/fields/svg/{}.svg", id);
-    let svg_data = isahc::get(link).unwrap().text().unwrap();
-
-    if svg_data.contains("Page Not Found") {
-        return (None, None);
-    }
-
-    // The last <polyline> tag in the svg represents the baselines. The middle element is where the fair lines meet, which is the ideal
-    // point to set the (x,y) coordinates
-
-    let result = svg_data
-        .split("<polyline").last().unwrap()
-        .split("points=").nth(1).unwrap_or("")
-        .split(" ").nth(1).unwrap_or("")
-        .to_owned();
-
-    if !result.contains(",") {return (None, None)};
-    
-    let split:Vec<&str> = result.split(",").collect();
-
-    (split[0].parse::<f32>().ok(), split[1].parse::<f32>().ok()) 
-
-}
-
-// pub fn venue_svg() {
-
-    
-//     let svg_links: Vec<String> = (0 ..= 6_000)
-//         .map(|id| format!("http://mlb.mlb.com/images/gameday/fields/svg/{}.svg", id))
-//         .collect()
-//         ;
-
-//     let svg_data = stream_chunked(svg_links);
-
-//     dbg!(&svg_data.len());
-
-//     let _svgs: Vec<String> = svg_data
-//         .into_iter()
-//         .map(|svg| svg.unwrap())
-//         .filter(|svg| !svg.contains("Page Not Found"))
-//         .inspect(|svg| println!("{}", svg.split("<g id=").nth(1).unwrap_or(svg)))
-//         .map(|svg| svg
-//                 .split(r#"<g id="Base"#).nth(1).unwrap_or("")
-//                 .split("<polygon").nth(1).unwrap_or("")
-//                 .split("points=").nth(1).unwrap_or("")
-//                 .split(" ").nth(2).unwrap_or("")
-//                 .to_owned())
-//         .inspect(|svg| println!("{}", svg))
-//         .collect()
-//         ;
-
-// }
 
 #[derive(Deserialize, Serialize, Debug, Copy, Clone)]
 pub struct VenueXY {
     pub id: u32,
     pub x: Option<f32>,
     pub y: Option<f32>,
-}
-
-
-#[derive(Deserialize, Debug)]
-pub (crate) struct Venues {
-    pub (crate) venues: Vec<VenueDe>,
 }
 
 impl From<VenueDe> for Venue {
@@ -177,6 +70,7 @@ impl From<TimeZone> for i8 {
             TimeZone::ASIA => 9,
             TimeZone::AUSTRALIA => 11,
             TimeZone::EUROPE => 0,
+            TimeZone::OTHER => 0,
         }
     }
 }
@@ -271,8 +165,8 @@ pub(crate) struct TimeZoneData {
     pub(crate) id: TimeZone,
 }
 
-#[serde(rename_all="camelCase")]
 #[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all="camelCase")]
 pub(crate) struct FieldInfo {
     pub(crate) capacity: Option<u32>,
     pub(crate) turf_type: Option<SurfaceType>,
@@ -286,8 +180,8 @@ pub(crate) struct FieldInfo {
     pub(crate) right_line: Option<u16>,
 }
 
-#[serde(rename_all="camelCase")]
 #[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all="camelCase")]
 pub(crate) struct XRefID {
     pub(crate) xref_id: Option<String>,
     pub(crate) xref_type: Option<String>,
@@ -331,7 +225,7 @@ pub enum TimeZone {
     /// * America/Guatemala
     #[serde(alias="America/Chicago", alias="America/Monterrey", alias="America/Cancun", alias="America/Mexico_City", 
             alias="America/Winnipeg", alias="America/Merida", alias="America/Mazatlan", alias = "America/Havana",
-            alias="America/Matamoros", alias="America/Guatemala")]
+            alias="America/Matamoros", alias="America/Guatemala", alias="Mexico/General")]
     CST,
     /// ### GMT -5
     /// * America/New_York
@@ -367,7 +261,7 @@ pub enum TimeZone {
     /// * Australia/Brisbane
     /// * Australia/Melbourne
     /// * Australia/Adelaide
-    #[serde(alias="Australia/Sydney", alias="Australia/Perth", alias="Australia/Brisbane", alias="Australia/Melbourne", alias="Australia/Adelaide")]
+    #[serde(alias="Australia/Sydney", alias="Australia/Perth", alias="Australia/Brisbane", alias="Australia/Melbourne", alias="Australia/Adelaide", alias="Pacific/Auckland")]
     AUSTRALIA,
     /// ### GMT ??
     /// All of Europe lumped into here
@@ -382,17 +276,22 @@ pub enum TimeZone {
     /// * Europe/Prague
     #[serde( alias="Europe/Helsinki", alias="Europe/Stockholm", alias="Europe/London", alias="Europe/Moscow", alias="Europe/Rome",
              alias= "Europe/Berlin", alias="Asia/Jerusalem", alias="Europe/Amsterdam", alias="Europe/Prague")]
-    EUROPE
+    EUROPE,
+    #[serde(other)]
+    OTHER,
 }
 
-#[derive(Deserialize, Serialize, Debug, Copy, Clone, Read, Write, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, Copy, Clone, PartialEq)]
 pub enum SurfaceType {
+    #[serde( alias="ArtificialTurf", alias = "Artifical", alias="Artificial Turf")]
     Artificial,
     Grass,
     Indoor,
+    #[serde(other)]
+    Other,
 }
 
-#[derive(Deserialize, Serialize, Debug, Copy, Clone, Read, Write, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, Copy, Clone, PartialEq)]
 pub enum RoofType {
     Dome,
     Open,
@@ -400,4 +299,37 @@ pub enum RoofType {
     Indoor,
 }
 
+pub fn get_svg (id: u32) -> (Option<f32>, Option<f32>) {
 
+    let link = format!("http://mlb.mlb.com/images/gameday/fields/svg/{}.svg", id);
+    let mut response = get(link);
+    
+    let mut svg_data = String::new();
+
+    if response.is_ok() {
+        svg_data = response.expect("Couldn't get a response").text().unwrap();
+    }
+    else {
+        return (None, None);
+    }
+
+    if svg_data.contains("Page Not Found") {
+        return (None, None);
+    }
+
+    // The last <polyline> tag in the svg represents the baselines. The middle element is where the fair lines meet, which is the ideal
+    // point to set the (x,y) coordinates
+
+    let result = svg_data
+        .split("<polyline").last().unwrap()
+        .split("points=").nth(1).unwrap_or("")
+        .split(" ").nth(1).unwrap_or("")
+        .to_owned();
+
+    if !result.contains(",") {return (None, None)};
+    
+    let split:Vec<&str> = result.split(",").collect();
+
+    (split[0].parse::<f32>().ok(), split[1].parse::<f32>().ok()) 
+
+}

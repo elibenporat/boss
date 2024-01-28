@@ -4,40 +4,43 @@
 //! 
 
 use crate::boxscore::{BoxScoreDe, BoxScoreData, fix_boxscore};
-use crate::defense::{Defense, DefenseData};
+// use crate::defense::{Defense, DefenseData};
 use crate::cache::*;
 use crate::coaches::{CoachData, Coaches, Roster};
-use crate::feed_live::{FeedData,Feed};
+// use crate::feed_live::{FeedData,Feed};
 use crate::metadata::{VecMetaDataInputs, MetaData};
 use crate::play_by_play::Game;
 use crate::players::{People, Player};
 use crate::schedule::{YearRange, GameMetaData, Schedule, SeasonSportStatus, SeasonSportCache, SeasonStatus, AbstractGameState};
 use crate::sports;
 use crate::team::{TeamData, TeamJson};
-use crate::utils::stream;
+
 use crate::venues::{VenueXY, Venues, VenueData};
 use crate::game::{Pitch, GameData};
 
 use rayon::prelude::*;
-use std::collections::{BTreeSet};
-use isahc::prelude::*;
+use std::collections::BTreeSet;
 use serde::{Serialize, Deserialize};
+use reqwest::blocking::*;
 
 
+fn cache_folder () -> String {
+    format!("{}{}", std::env::current_dir().unwrap().display(), "\\cache" )
+}
 
 // We begin with the schedule. Getting the entire schedule can be quite time consuming, so we need to cache our data and only request year/level combinations that we haven't pulled already.
 // Between 2005 and 2020 (inclusive) there are roughly 300K games in the database.
 
 
 pub fn get_everything() {
-    let years = YearRange::from_range_inc(2005 ..= 2020);
+    let years = YearRange::from_range_inc(2010 ..= 2024);
     let sport_ids = sports::get_all_sport_ids();
 
     let meta = get_meta_data(years, sport_ids);
     let schedule = meta.schedule.clone();
     let meta_data = meta.into();
 
-    for _ in 0 .. 50 {
+    for _ in 0 .. 10 {
         get_play_by_play(schedule.clone(), &meta_data);
     }
 
@@ -45,36 +48,6 @@ pub fn get_everything() {
     // output_defense(&meta_data);
 }
 
-#[allow(unused)]
-/// Converts the serialized pitch data into a defense database
-/// Only use this if you want to build the defense data from scratch
-/// Data are streamed so as to limit memory usage
-pub fn output_defense (meta_data: &MetaData) {
-
-    use csv::Reader;
-    use crate::defense::{Defense, DefenseData};
-
-    const PLAY_BY_PLAY: &str = r#"F:\Baseball\baseball.csv"#;
-    
-    let players = meta_data.players.clone();
-
-    println!("Converting pitch data...");
-
-    let mut csv_reader = Reader::from_path(PLAY_BY_PLAY).unwrap();
-
-    for pitch in csv_reader.deserialize() {
-        match pitch {
-            Ok (p) => {
-                let defense: Vec<Defense> = DefenseData {
-                    pitch: p,
-                    players: &players,
-                }.into();
-                if defense.len() > 0 {write_defense(&defense)};
-            },
-            Err (_) => {},
-        }
-    };
-}
 
 pub fn get_play_by_play (schedule: Vec<GameMetaData>, meta_data: &MetaData) {
 
@@ -84,7 +57,9 @@ pub fn get_play_by_play (schedule: Vec<GameMetaData>, meta_data: &MetaData) {
         bad: BTreeSet<u32>,
     }
 
-    let json = std::fs::read_to_string(r#"F:\Baseball\games_processed.json"#).unwrap_or("".to_string());
+    let games_processed_str = format!("{}{}", cache_folder(), "\\games_processed.json" );
+
+    let json = std::fs::read_to_string(&games_processed_str).unwrap_or("".to_string());
     let games_processed: GamesProcessed = serde_json::from_str(&json).unwrap_or(
         GamesProcessed {
             good: BTreeSet::new(),
@@ -92,13 +67,9 @@ pub fn get_play_by_play (schedule: Vec<GameMetaData>, meta_data: &MetaData) {
         }
     );
 
-    // let mut stored_pbp = load_play_by_play();
-    // let games_loaded: BTreeSet<u32> = stored_pbp.iter().map(|pitch| pitch.game_pk).collect();
-    
-    // println!("Loaded {} games", games_loaded.len());
-
     let mut good_games: BTreeSet<u32> = games_processed.good;
     let mut bad_games: BTreeSet<u32> = games_processed.bad;
+    // let mut bad_games: BTreeSet<u32> = BTreeSet::new();
 
     //For some reason, we have duplicate game_pks in our schedule, so we make it a set to get rid of that problem.
     let pbp_urls: BTreeSet<(u32, String)> = schedule.iter()
@@ -114,11 +85,9 @@ pub fn get_play_by_play (schedule: Vec<GameMetaData>, meta_data: &MetaData) {
     let requested_games: BTreeSet<u32> = pbp_urls.iter().map(|game| game.0).collect();
     dbg!(requested_games.len());
 
-    let http_client = isahc::HttpClient::new().unwrap();
-
     let result: Vec<Pitch> = pbp_urls.into_par_iter()
         // .inspect(|data| println!("{}", &data.1))
-        .map (|data| (data.0, http_client.get(data.1).unwrap().text().unwrap_or("".to_string())))
+        .map (|data| (data.0, get(data.1).unwrap().text().unwrap_or("".to_string())))
         .filter(|data| data.1.contains("allPlays"))
         .map (|data| {
             let pbp: Game = serde_json::from_str(&data.1).expect(&format!("Error with game_pk: {}", data.0));
@@ -133,8 +102,7 @@ pub fn get_play_by_play (schedule: Vec<GameMetaData>, meta_data: &MetaData) {
         .flatten()
         .collect()
         ;
-       
-    
+
     let games_returned: BTreeSet<u32> = result.iter().map(|game|game.game_pk).collect();
     let games_missed: BTreeSet<u32> = requested_games.into_iter().filter(|game| !games_returned.contains(game)).collect();
 
@@ -145,9 +113,6 @@ pub fn get_play_by_play (schedule: Vec<GameMetaData>, meta_data: &MetaData) {
     good_games.extend(games_returned);
     bad_games.extend(games_missed);
 
-    // stored_pbp.extend(result);
-
-    // let good_games: BTreeSet<u32> = stored_pbp.iter().map(|game| game.game_pk).collect();
 
     let num_games_processed = good_games.len();
 
@@ -157,28 +122,11 @@ pub fn get_play_by_play (schedule: Vec<GameMetaData>, meta_data: &MetaData) {
     };
 
     let json = serde_json::to_string(&games_processed).unwrap();
-    std::fs::write(r#"F:\Baseball\games_processed.json"#, json).unwrap();
+    std::fs::write(&games_processed_str, json).unwrap();
 
     println!("Writing pitch by pitch data to CSV...");
     crate::cache::append_play_by_play(&result);
     println!("Added {} records.", result.len());
-
-    println!("Converting to Defense Data...");
-
-    let defense: Vec<Defense> = result.into_par_iter()
-        .map(|pitch| {
-            let defense: Vec<Defense> = DefenseData {
-                pitch,
-                players: &meta_data.players,
-            }.into();
-            defense 
-        })
-        .flatten()
-        .collect()
-        ;
-    
-    println!("Writing defense data to CSV...");
-    if defense.len() > 0 {write_defense(&defense)};
 
     println!("Processed {} total games.", num_games_processed);
 
@@ -194,27 +142,27 @@ pub fn get_meta_data(years: Vec<u16>, sport_ids: Vec<u32>) -> VecMetaDataInputs 
 
     dbg!(teams_data.len());
     
-    // for _ in 0.. 360 {
-    // let boxscore_data = get_boxscore_data(&schedule_data);
+    for _ in 0.. 20 {
+    let boxscore_data = get_boxscore_data(&schedule_data);
     // dbg! (boxscore_data.len());
-    // }
+    }
 
     let boxscore_data = get_boxscore_data(&schedule_data);
     dbg! (boxscore_data.len());
 
-    let coaches_data = get_coach_data(&schedule_data);
-    dbg!(coaches_data.len());
+    // let coaches_data = get_coach_data(&schedule_data);
+    // dbg!(coaches_data.len());
                 
     // for _ in 0 .. 100 {
     //     let player_data = get_player_data(&boxscore_data, &coaches_data);
     //     dbg!(player_data.len());
     // }
-            
-    let player_data = get_player_data(&boxscore_data, &coaches_data);
+
+    let player_data = get_player_data(&boxscore_data);
     dbg!(player_data.len());
-            
-    let feed_live_data = get_feed_live_data(&schedule_data);
-    dbg!(feed_live_data.len());
+    
+    // let feed_live_data = get_feed_live_data(&schedule_data);
+    // dbg!(feed_live_data.len());
 
     let venue_x_y_data = get_venue_xy_data(&schedule_data);
     dbg!(venue_x_y_data.len());
@@ -227,8 +175,8 @@ pub fn get_meta_data(years: Vec<u16>, sport_ids: Vec<u32>) -> VecMetaDataInputs 
         boxscore: boxscore_data,
         venue: venue_data,
         venue_x_y: venue_x_y_data,
-        coaches: coaches_data,
-        feed_data: feed_live_data,
+        // coaches: coaches_data,
+        // feed_data: feed_live_data,
         teams: teams_data,
         players: player_data,
     }
@@ -259,11 +207,9 @@ fn get_team_data (sched: &Vec<GameMetaData>) -> Vec<TeamData> {
         // .inspect(|url| println!("{:?}", url))
         .collect()
         ;
-    
-    let http_client = isahc::HttpClient::new().unwrap();
 
     let json_data: Vec<(u16, String)> = team_urls.into_par_iter()
-            .map (|url|  (url.0, http_client.get(url.1).unwrap().text().unwrap()))
+            .map (|url|  (url.0, get(url.1).unwrap().text().unwrap()))
             .filter (|json| json.1.contains("teams"))
             .collect();
             
@@ -288,7 +234,7 @@ fn get_team_data (sched: &Vec<GameMetaData>) -> Vec<TeamData> {
     teams_cache
 }
 
-fn get_player_data (boxscore: &Vec<BoxScoreData>, coaches: &Vec<CoachData>) -> Vec<Player> {
+fn get_player_data (boxscore: &Vec<BoxScoreData>) -> Vec<Player> {
 
     let mut players_cache = load_player_data();
 
@@ -309,22 +255,8 @@ fn get_player_data (boxscore: &Vec<BoxScoreData>, coaches: &Vec<CoachData>) -> V
         .collect()
         ;
 
-    let coaches_needed: BTreeSet<u32> = coaches.iter()
-        .map (|c| vec![
-                c.home_coaches.batting_coach,
-                c.home_coaches.pitching_coach,
-                c.home_coaches.manager,
-                c.away_coaches.batting_coach,
-                c.away_coaches.pitching_coach,
-                c.away_coaches.manager,
-            ])
-        .flatten()
-        .filter_map(|c| c)
-        .collect()
-        ;
 
     players_needed.extend(umps_needed);
-    players_needed.extend(coaches_needed);
     
 
     // dbg!(players_needed.len());
@@ -337,16 +269,15 @@ fn get_player_data (boxscore: &Vec<BoxScoreData>, coaches: &Vec<CoachData>) -> V
             .filter (|player| !players_cached.contains(&player))
             .map(|player| format!("http://statsapi.mlb.com/api/v1/people/{}?hydrate=xrefId,draft,transactions,awards,education",player))
             // .inspect(|url| println!("{}", url))
-            .take(1_000)
+            // .take(1_000)
             .collect()
             ;
 
     if player_urls.len() == 0 {return players_cache};
 
-    let http_client = isahc::HttpClient::new().unwrap();
 
-    let json_data: Vec<String> = player_urls.into_par_iter()
-            .map (|url|  http_client.get(url).unwrap().text().unwrap())
+    let json_data: Vec<String> = player_urls.into_iter()
+            .map (|url|  get(url).unwrap().text().unwrap())
             .collect();
 
     let new_player_data: Vec<crate::players::Player> = json_data.into_par_iter()
@@ -383,13 +314,10 @@ fn get_venue_data (schedule_data: &Vec<GameMetaData>) -> Vec<VenueData> {
         .collect();
 
     if venue_urls.len() == 0 {return venue_cache};
-    dbg!(&venue_urls);
-    
-    let http_client = isahc::HttpClient::new()
-    .unwrap();
+    // dbg!(&venue_urls);
 
     let json_data: Vec<(u16, String, String)> = venue_urls.into_par_iter()
-        .map(|url| (url.0, http_client.get(url.1).unwrap().text().unwrap(), http_client.get(url.2).unwrap().text().unwrap()))
+        .map(|url| (url.0, get(url.1).unwrap().text().unwrap(), get(url.2).unwrap().text().unwrap()))
         .collect()
         ;
     
@@ -422,27 +350,26 @@ fn get_venue_data (schedule_data: &Vec<GameMetaData>) -> Vec<VenueData> {
 
 fn get_coach_data (schedule_data: &Vec<GameMetaData>) -> Vec<CoachData> {
 
-
+    
     let mut coaches_cache = load_coach_data();
     let games_cached: BTreeSet<u32> = coaches_cache.clone().into_iter()
-        .map (|coaches| coaches.game_pk)
-        .collect()
-        ;
+    .map (|coaches| coaches.game_pk)
+    .collect()
+    ;
+    return coaches_cache;
 
     let coach_urls: Vec<(u32, String, String)> = schedule_data.iter()
         .filter(|game| !games_cached.contains(&game.game_pk) && game.game_status == AbstractGameState::Final)
         .map(|game| (game.game_pk, game.coaches_home_url.clone(), game.coaches_away_url.clone()))
-        .take(20_000)
+        // .take(100_000)
         .collect()
         ;
     
     if coach_urls.len() == 0 {return coaches_cache};
 
-    let http_client = isahc::HttpClient::new()
-        .unwrap();
     
-    let json_data: Vec<(u32,String, String)> = coach_urls.into_par_iter()
-    .map(|url| (url.0, http_client.get(url.1).unwrap().text().unwrap(),  http_client.get(url.2).unwrap().text().unwrap()))
+    let json_data: Vec<(u32,String, String)> = coach_urls.into_iter()
+    .map(|url| (url.0, get(url.1).unwrap().text().unwrap(), get(url.2).unwrap().text().unwrap()))
     .collect()
     ;    
 
@@ -533,30 +460,21 @@ fn get_boxscore_data (schedule_data: &Vec<GameMetaData>) -> Vec<BoxScoreData> {
         ;
 
 
-    let error_games = vec![431736, 597930, 220889, 431736, 259009, 577313];
+    let error_games = vec![342575, 332572, 308207, 316113, 333686, 359993, 333950, 332572, 429969, 469751, 510008, 519460, 431736, 597930, 220889, 431736, 259009, 577313, 55487, 56175];
 
     let boxscore_urls: Vec<(u32, String)> = schedule_data.iter()
         .filter(|game| !games_cached.contains(&game.game_pk) && game.game_status == AbstractGameState::Final)
         .filter(|game| !error_games.contains(&game.game_pk))
         .map(|game| (game.game_pk, game.game_url_boxscore.clone()))
-        .take(50_000)
+        .take(5_000)
         // .take(0)
         .collect()
         ;
 
     if boxscore_urls.len() == 0 {return  boxscore_cache};
     
-
-    let http_client = isahc::HttpClient::new().unwrap();
-
-    // let start_time = std::time::Instant::now();
-    // let http_client = isahc::HttpClient::builder()
-    //     .max_connections(1)
-    //     .build()
-    //     .unwrap();
-
     let json_data: Vec<(u32,String)> = boxscore_urls.into_par_iter()
-        .map(|url| (url.0, http_client.get(url.1).unwrap().text().unwrap()))
+        .map(|url| (url.0, get(url.1).unwrap().text().unwrap()))
         .collect()
         ;
 
@@ -566,6 +484,7 @@ fn get_boxscore_data (schedule_data: &Vec<GameMetaData>) -> Vec<BoxScoreData> {
     .map(|json| 
             {
             let fixed_box = fix_boxscore(&json.1);
+            // dbg!(&fixed_box);
             let boxscore_json: Result<BoxScoreDe, serde_json::Error> = serde_json::from_str(&fixed_box);
             (json.0, boxscore_json)
             }
@@ -584,65 +503,65 @@ fn get_boxscore_data (schedule_data: &Vec<GameMetaData>) -> Vec<BoxScoreData> {
 
 }
 
-fn get_feed_live_data (schedule_data: &Vec<GameMetaData>) -> Vec<FeedData> {
+// fn get_feed_live_data (schedule_data: &Vec<GameMetaData>) -> Vec<FeedData> {
 
-    let mut feed_live_cache = load_feed_live_data();
-    let games_cached: BTreeSet<u32> = feed_live_cache.clone().into_iter()
-            .map (|game| game.game_pk)
-            .collect()
-            ;
+//     let mut feed_live_cache = load_feed_live_data();
+//     let games_cached: BTreeSet<u32> = feed_live_cache.clone().into_iter()
+//             .map (|game| game.game_pk)
+//             .collect()
+//             ;
 
-    let bad_games = vec![
-        431736, 220889, 597930, 307853, 259009, 383397, 383405, 383409, 383411,
-    ];
+//     let bad_games = vec![
+//         431736, 220889, 597930, 307853, 259009, 383397, 383405, 383409, 383411,
+//     ];
 
-    let feed_urls: Vec<String> = schedule_data.iter()
-            .filter(|game| !games_cached.contains(&game.game_pk) && game.game_status == AbstractGameState::Final)
-            .filter(|game| !bad_games.contains(&game.game_pk))
-            .map(|game| game.game_url_feed_live.clone())
-            .take(500)
-            .collect()
-            ;
+//     let feed_urls: Vec<String> = schedule_data.iter()
+//             .filter(|game| !games_cached.contains(&game.game_pk) && game.game_status == AbstractGameState::Final)
+//             .filter(|game| !bad_games.contains(&game.game_pk))
+//             .map(|game| game.game_url_feed_live.clone())
+//             .take(500)
+//             .collect()
+//             ;
 
-    if feed_urls.len() == 0 {return feed_live_cache};
+//     if feed_urls.len() == 0 {return feed_live_cache};
 
-    // dbg!(&feed_urls);
+//     // dbg!(&feed_urls);
 
-    // let start_time = std::time::Instant::now();
+//     // let start_time = std::time::Instant::now();
 
-    // Split up the pull into chunks of 4 urls and then spawn a separate thread for each chunk.
-    // Each chunk will then do an asynchronous request so that we get multi-threaded asynchronous
-    // network requests. I don't know the optimal chunk_size to use here.
-    let json_data: Vec<Result<String, std::io::Error>> = feed_urls.into_par_iter()
-        .chunks(20)
-        .map(|url| stream(url))
-        .flatten()
-        // .inspect(|game| if game.is_err() {println!("Error: {:?}", game)})
-        .collect()
-        ;
+//     // Split up the pull into chunks of 4 urls and then spawn a separate thread for each chunk.
+//     // Each chunk will then do an asynchronous request so that we get multi-threaded asynchronous
+//     // network requests. I don't know the optimal chunk_size to use here.
+//     let json_data: Vec<Result<String, std::io::Error>> = feed_urls.into_par_iter()
+//         .chunks(20)
+//         .map(|url| stream(url))
+//         .flatten()
+//         // .inspect(|game| if game.is_err() {println!("Error: {:?}", game)})
+//         .collect()
+//         ;
 
-    // println!("Took {} seconds to pull the feed live data", start_time.elapsed().as_secs());
+//     // println!("Took {} seconds to pull the feed live data", start_time.elapsed().as_secs());
 
-    let new_feed_live_data: Vec<FeedData> = json_data.into_par_iter()
-        .map(|json| 
-            {
-                let json_data = json.unwrap_or("".to_string());
-                let feed_data: Result<Feed, serde_json::Error> = serde_json::from_str(&json_data);
-                feed_data
-            }
-        )
-        // .inspect(|game| if game.is_err() {println!("Error: {:?}", game)})
-        .filter(|feed_data| feed_data.is_ok())
-        .map(|feed_data| feed_data.unwrap().into())
-        .collect()
-        ;
+//     let new_feed_live_data: Vec<FeedData> = json_data.into_par_iter()
+//         .map(|json| 
+//             {
+//                 let json_data = json.unwrap_or("".to_string());
+//                 let feed_data: Result<Feed, serde_json::Error> = serde_json::from_str(&json_data);
+//                 feed_data
+//             }
+//         )
+//         // .inspect(|game| if game.is_err() {println!("Error: {:?}", game)})
+//         .filter(|feed_data| feed_data.is_ok())
+//         .map(|feed_data| feed_data.unwrap().into())
+//         .collect()
+//         ;
     
-    feed_live_cache.extend(new_feed_live_data);
-    cache_feed_live_data(&feed_live_cache);
+//     feed_live_cache.extend(new_feed_live_data);
+//     cache_feed_live_data(&feed_live_cache);
 
-    feed_live_cache
+//     feed_live_cache
 
-}
+// }
 
 fn get_schedule_data (years: Vec<u16>, sport_ids: Vec<u32>) -> Vec<GameMetaData> {
 

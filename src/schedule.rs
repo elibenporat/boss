@@ -17,68 +17,24 @@
 
 use serde::{Deserialize, Serialize};
 use std::ops::{Range, RangeInclusive};
-// use std::fmt::{Display};
-use crate::utils::*;
+
 use crate::sports;
-use crate::cache::{cache_schedule, load_schedule};
-use isahc::prelude::*;
+use crate::cache::{cache, load};
 use rayon::prelude::*;
+use reqwest::blocking::get as download;
 use std::collections::{BTreeSet, BTreeMap};
-use tree_buf::{Read, Write};
+use crate::date::Date;
 
+// ///Serialize the schedule data
+// pub (crate) fn cache_schedule (games: &Vec<schedule::GameMetaData>) {  
+//     cache (SCHEDULE_JSON, games.clone());
+// }
 
-pub fn test_schedule() {
-
-    let start_time = std::time::Instant::now();
-    let schedule_cache = load_schedule();  
-    
-    // Figure out which seasons need to be re-pulled. Any season/sport_id combination
-    // that has any items that aren't "Final" should be re-pulled. We first map all the
-    // schedule data into a set, then build a second set with our filter rule. Currently,
-    // does not keep track of Empty seasons, so will always re-try to pull all season/sport_ids
-    // combinatations that it hasn't marked as "Complete"
-    let season_sports_status: SeasonSportStatus =
-        schedule_cache
-            .clone()
-            .into_iter()
-            .map(|sched| (sched.game_date.year, sched.sport_id, sched.game_status))
-            .collect()
-            ;
-    
-    let season_sports: SeasonSportCache =
-    schedule_cache
-        .clone()
-        .into_iter()
-        .map(|sched| ((sched.game_date.year, sched.sport_id), SeasonStatus::status(sched.game_date.year, sched.sport_id, &season_sports_status)))
-        .collect()
-        ;
-   
-
-    let years = YearRange::from_range_inc(2005 ..= 2020);
-
-    let sport_ids = sports::get_all_sport_ids();
-
-    let sched = Schedule::get_data(years, sport_ids, &season_sports);
-    let games: Vec<GameMetaData> = sched.games.into_iter()
-                                        .map(|game| game.into())
-                                        .collect()
-                                        ;
-
-    let mut serialze_schedule: Vec<GameMetaData> = schedule_cache.into_iter()
-                    .filter(|sched| season_sports.get(&(sched.game_date.year, sched.sport_id)) == Some(&SeasonStatus::Complete))
-                    .collect::<Vec<GameMetaData>>()
-                    ;
-
-    serialze_schedule.extend(games);
-
-    dbg!(&serialze_schedule.len());
-    cache_schedule(&serialze_schedule);
-    
-    dbg!(start_time.elapsed().as_secs());
-
-}
-
-
+// ///Load the chedule data
+// pub (crate) fn load_schedule () -> Vec<schedule::GameMetaData> {
+//     load (SCHEDULE_JSON)
+// } 
+const SCHEDULE_JSON: &str = "\\schedule.json";
 
 pub type SeasonSportStatus = BTreeSet<(u16, u32, AbstractGameState)>;
 pub type SeasonSportCache = BTreeMap<(u16, u32), SeasonStatus>;
@@ -90,11 +46,10 @@ pub struct GameMetaData {
     pub game_type: GameType,
     pub game_type_desc: GameTypeDescription,
     pub game_pk: u32,
-    pub game_date: Date,
+    pub game_date: GameDate,
     pub game_venue_id: u32,
     pub game_url_play_by_play: String,
     pub game_url_boxscore: String,
-    pub game_url_feed_live: String,
     pub coaches_home_url: String,
     pub coaches_away_url: String,
     pub game_status: AbstractGameState,
@@ -111,7 +66,6 @@ impl From<GameWithSportId> for GameMetaData {
             game_venue_id: game.game.game_venue_id,
             game_url_play_by_play: game.game.game_url_play_by_play,
             game_url_boxscore: game.game.game_url_boxscore,
-            game_url_feed_live: game.game.game_url_feed_live,
             coaches_home_url: game.game.coaches_home_url,
             coaches_away_url: game.game.coaches_away_url,
             game_status: game.game.game_status,
@@ -127,7 +81,7 @@ pub struct Game {
     pub game_type: GameType,
     pub game_type_desc: GameTypeDescription,
     pub game_pk: u32,
-    pub game_date: Date,
+    pub game_date: GameDate,
     pub game_venue_id: u32,
     pub game_url_play_by_play: String,
     pub game_url_boxscore: String,
@@ -143,12 +97,8 @@ impl From <GameDe> for Game {
 
         let game_url_play_by_play = format!("{}game/{}/playByPlay",  crate::BASE_URL, game.game_pk);
         let game_url_boxscore =     format!("{}game/{}/boxscore",    crate::BASE_URL, game.game_pk);
-        //This link contains data about the official scorer as well as the primary datacaster. These data go back
-        //to 2008. 
         let game_url_feed_live =    format!("{}game/{}/feed/live",   crate::BASE_URL_V11, game.game_pk);
-
         let game_date: GameDate = game.game_date.into();
-
         let coaches_home_url =      format!("{}teams/{}/coaches/?date={}/{}/{}",crate::BASE_URL, game.teams.home.team.id, game_date.month, game_date.day, game_date.year);
         let coaches_away_url =      format!("{}teams/{}/coaches/?date={}/{}/{}",crate::BASE_URL, game.teams.away.team.id, game_date.month, game_date.day, game_date.year);
 
@@ -195,11 +145,13 @@ impl SeasonStatus {
 #[serde(from = "Schedule")]
 pub struct Schedule {
     pub games: Games,
-
 }
 
-
 impl Schedule {   
+
+    pub fn update () -> Self {
+        todo!()
+    }
 
     fn download_years (years: Vec<u16>, sport_id: u32, cache: &SeasonSportCache) -> Schedule {
         let base_url = format!("{}schedule?sportId={}&startDate=01/01/", crate::BASE_URL, sport_id);
@@ -217,8 +169,7 @@ impl Schedule {
             .map(|url| {
                 //TODO: Add proper error handling
                 // println!("Downloading: {}", &url.0);
-                let json: String = isahc::get(url.clone().0).unwrap().text().unwrap();
-                // dbg!(&url);
+                let json: String = download(url.clone().0).unwrap().text().unwrap();
                 let sched: ScheduleDe = serde_json::from_str(&json).unwrap();
                 let sched_with_context = ScheduleWithContext {
                     sched, 
@@ -301,7 +252,28 @@ impl From <ScheduleWithContext> for Games {
     }
 }
 
-type GameDate = Date;
+#[derive(Debug, Copy, Clone, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd)]
+pub struct GameDate {
+    pub year: u16,
+    pub month: u8,
+    pub day: u8,
+}
+
+impl From <crate::date::Date> for GameDate {
+    fn from(value: crate::date::Date) -> Self {
+        Self {
+            year: value.year,
+            month: value.month,
+            day: value.day
+        }
+    }
+}
+
+impl ToString for GameDate {
+    fn to_string(&self) -> String {
+        format!("{}-{}-{}", self.year, self.month, self.day)
+    }
+}
 
 impl From <String> for GameDate {
     fn from (date_string: String) -> GameDate {
@@ -318,7 +290,23 @@ impl From <String> for GameDate {
         }
     }
 }
+/// Get the difference between two dates in units of years. Does a rough approximation only. This is primarily used for computing
+/// the age of the batter and does not need to be super precise. This saves us from having to import a library to do proper date
+/// math. This may change in the future.
+impl std::ops::Sub for GameDate {
+    type Output = f32;
 
+    fn sub(self, other:GameDate) -> f32 {
+        
+        let year_diff = self.year as f32 - other.year as f32;
+        let month_diff = self.month as f32 - other.month as f32;
+        let day_diff = self.day as f32 - other.day as f32;
+
+        year_diff + (month_diff / 12f32 ) + (day_diff / 365.25f32)
+    
+    }
+
+}
 
 
 
@@ -383,7 +371,7 @@ struct Venue {
     id: Option<u32>,
 }
 
-#[derive(Deserialize, Serialize, Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Read, Write)]
+#[derive(Deserialize, Serialize, Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 // #[serde(field_identifier)]
 pub enum GameType {
     /// Regular Season
