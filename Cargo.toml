@@ -1,40 +1,14 @@
 [package]
 name = "boss"
-version = "0.0.4"
-
-readme = "README.md"
-description = "Baseball Open Source Software"
-
-authors = ["Eli Ben-Porat <boss@ben-porat.com"]
-edition = "2018"
-
-license = "MIT"
-documentation = "https://docs.rs/boss"
-homepage = "https://docs.rs/boss"
-repository = "https://github.com/elibenporat/boss"
-
-[badges]
-maintenance = { status = "actively-developed" }
+version = "0.2.0"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-isahc = "0.9.10"
-csv = "1.1"
-serde = {version = "1.0", features = ["derive"]}
-rayon = "1.2"
+reqwest = {version = "0.11", features = ["blocking"]}
+csv = {version = "1.1"}
+serde = { version = "1.0", features = ["derive"] }
 serde_json = "1"
-futures = "0.3"
+rayon ="1.6"
 regex = "1"
-#Experimental use of Tree-Buf
-tree-buf = {git = "https://github.com/That3Percent/tree-buf/", rev="e3bf1fa19e4a114308fda17a9062e7eb0bd90d3c"}
-
-# This is just for development, remove when it's a working library
-[profile.release]
-opt-level = 3
-
-[[bin]]
-name = "boss"
-path = "src/bin/test.rs"
-#name = "tree-buf"
-#path = "src/bin/tree-buf-test.rs"
